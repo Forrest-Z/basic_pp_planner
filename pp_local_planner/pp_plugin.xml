@@ -1,0 +1,7 @@
+<library path="lib/libpp_local_planner">
+  <class name="pp_local_planner/PPLocalPlannerROS" type="pp_local_planner::PPLocalPlannerROS" base_class_type="nav_core::BaseLocalPlanner">
+    <description>
+      Local planner plugin implementation for the base_local_planner based on purepursuit approach to follow the global plans. 
+    </description>
+  </class>
+</library>
