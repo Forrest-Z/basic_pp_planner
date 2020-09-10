@@ -171,12 +171,12 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
             {
                 std::vector<geometry_msgs::PoseStamped> local_plan;
                 //updateLocalPlan(local_plan, cmd_vel);
-                //publishLocalPlan(local_plan);
+                publishLocalPlan(transformed_plan);
                 return true;
             }
             else
             {
-                //ROS_DEBUG_NAMED("purepursuit failed to find a valid plan");
+                ROS_WARN("purepursuit failed to find a valid plan");
                 return false;
             }
         }
@@ -203,7 +203,9 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
             }
             ROS_DEBUG_NAMED("pp_local_planner", "Received a transformed plan with %zu points.", transformed_plan.size());
             bool planner_ok;
+            ROS_WARN("plan size unmodified: %ld", transformed_plan.size());
             planner_ok = ppComputeVelocityCommands(transformed_plan, current_pose_, cmd_vel);
+            ROS_WARN("plan size modified: %ld", transformed_plan.size());
             if(planner_ok)
             {
                 return true;

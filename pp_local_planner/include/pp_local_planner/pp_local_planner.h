@@ -15,7 +15,7 @@
 #include <vector>
 #include <Eigen/Core>
 
-
+#include "motion_planner.h"
 #include <pp_local_planner/PPLocalPlannerConfig.h>
 
 //for creating a local cost grid
@@ -60,6 +60,8 @@ namespace pp_local_planner {
              */
             PPLocalPlanner(std::string name, base_local_planner::LocalPlannerUtil *planner_util);
 
+            ~PPLocalPlanner();
+
             /**
              * @brief Reconfigures the trajectory planner
              */
@@ -69,8 +71,8 @@ namespace pp_local_planner {
              * sets new plan and resets state
              */
             bool setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan);
-            bool ppUpdate(const tf2_ros::Buffer* tf, const std::vector<geometry_msgs::PoseStamped>& transformed_plan, const
-            geometry_msgs::PoseStamped& global_pose, const std::vector<geometry_msgs::Point>& footprint_spec, const geometry_msgs::Twist& robot_vel, geometry_msgs::Twist& cmd_vel);
+            bool ppUpdate(const tf2_ros::Buffer* tf, std::vector<geometry_msgs::PoseStamped>& transformed_plan, const
+            geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, geometry_msgs::Twist& cmd_vel);
 
         private:
 
@@ -84,11 +86,11 @@ namespace pp_local_planner {
              */
             double checkFootprintCost(double x, double y, double theta, std::vector<geometry_msgs::Point> footprint_spec);
             double calculateDynamicLookahead(const geometry_msgs::Twist& robot_vel);
-            bool computeLinearVelocity(const std::vector<geometry_msgs::PoseStamped>& transformed_plan, const
-            std::vector<geometry_msgs::Point>& footprint_spec, const geometry_msgs::Twist& robot_vel, const geometry_msgs::PoseStamped& global_pose, double& linear_vel);
+            bool computeLinearVelocity(std::vector<geometry_msgs::PoseStamped>& transformed_plan, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, const
+            geometry_msgs::PoseStamped& global_pose, geometry_msgs::Twist& base_command);
             bool computeAngularVelocity(const tf2_ros::Buffer* tf, const geometry_msgs::PoseStamped& lookahead_pose, const geometry_msgs::PoseStamped&
-            global_pose, const geometry_msgs::Twist&, double linear_vel, double& angular_vel);
-            bool getLookaheadPoint(const std::vector<geometry_msgs::PoseStamped>&
+            global_pose, const geometry_msgs::Twist& robot_vel, double linear_vel, double& angular_vel);
+            bool getLookaheadPoint(const tf2_ros::Buffer* tf, std::vector<geometry_msgs::PoseStamped>&
             transformed_plan, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel,
             geometry_msgs::PoseStamped& lookahead_pose);
             bool makeVelocityPlan(const std::vector<geometry_msgs::PoseStamped>& transformed_plan, const
@@ -100,10 +102,14 @@ namespace pp_local_planner {
             }
             boost::mutex configuration_mutex_;
             base_local_planner::LocalPlannerUtil *planner_util_;
+            motion_planner::MotionPlanner* mplnr;
             std::vector<geometry_msgs::PoseStamped> global_plan_;
             std::string frame_id_;
             bool publish_traj;
+            
+            //object to get local planner limit parameters 
             typedef base_local_planner::LocalPlannerLimits planner_limits; 
+            //structure containing purepursuit configurations.
             struct PurepursuitConfig
             {
                 double min_lookahead;
@@ -112,7 +118,53 @@ namespace pp_local_planner {
                 double kct;
                 planner_limits limits_;
             };
+
+            //container holding information for debugging.
+            struct PurepursuitDebug
+            {
+                PurepursuitDebug()
+                {
+                    this->pose_debug_pub = this->nh_debug.advertise<geometry_msgs::PoseStamped>("/lookahead_pose", 1);
+                }
+               
+                /*
+                 * @brief method to update infos to publish
+                 * @param dynamic lookahead information.
+                 * @param dynamic latertal shif information.
+                 * @param curvature info to publish.
+                 * @param lookahead info
+                 */
+                //typename<class Info, class Data>
+                //void updateDebug(Info debug_info, Data debug_data)
+                void updateDebug(double dynamic_lookahead, double lateral_shift, double curvature)
+                {
+                    this->dynamic_lookahead = dynamic_lookahead;
+                    this->lateral_shift = lateral_shift;
+                    this->curvature = curvature;
+                }
+
+                void updateDebug(geometry_msgs::PoseStamped pose)
+                {
+                    this->lookahead_pose = pose;
+                }
+
+
+                void publishDebug()
+                {
+                    this->pose_debug_pub.publish(this->lookahead_pose);
+                }
+
+                private:
+                    ros::NodeHandle nh_debug;
+                    ros::Publisher pose_debug_pub; 
+                    double dynamic_lookahead;
+                    double lateral_shift;
+                    double curvature;
+                    geometry_msgs::PoseStamped lookahead_pose;
+            };
+
             PurepursuitConfig pp_config;
+            PurepursuitDebug* pp_debug;
 
 
     };
