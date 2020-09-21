@@ -2,7 +2,7 @@
  *
  * Software License Agreement 
  *
- *  Copyright (c) 2009, Botsync.
+ *  Copyright (c) 2020, Botsync.
  *  All rights reserved.
  *
  * Author: botsync.co 
@@ -85,7 +85,7 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
                 planner_util_.initialize(tf, costmap, costmap_ros_->getGlobalFrameID());
 
                 //create the actual planner that we'll use.. it'll configure itself from the parameter server
-                pp_  = boost::shared_ptr<PPLocalPlanner>(new PPLocalPlanner(name, &planner_util_));
+                pp_  = boost::shared_ptr<PPLocalPlanner>(new PPLocalPlanner(name, tf_, &planner_util_, costmap_ros_->getGlobalFrameID()));
 
                 if( private_nh.getParam( "odom_topic", odom_topic_ ))
                 {
@@ -132,11 +132,20 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
                 ROS_ERROR("Could not get robot pose");
                 return false;
             }
+            /*if(pp_->isGoalReached(current_pose_))
+            { 
+               return true;
+               ROS_INFO("GOAL REACHED :)" );
+            }
+            
+            ROS_INFO("GOAL NOT REACHED");
+            return false;*/
 
             if(latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_)) {
                 ROS_INFO("Goal reached");
                 return true;
             } else {
+                ROS_INFO("Goal not reached");
                 return false;
             }
         }
@@ -156,8 +165,7 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
         }
 
 
-        bool PPLocalPlannerROS::ppComputeVelocityCommands(std::vector<geometry_msgs::PoseStamped>&
-        transformed_plan, const geometry_msgs::PoseStamped& global_pose, geometry_msgs::Twist& cmd_vel)
+        bool PPLocalPlannerROS::ppComputeVelocityCommands(const geometry_msgs::PoseStamped& global_pose, geometry_msgs::Twist& cmd_vel)
         {
 
             if(!isInitialized()){
@@ -167,11 +175,12 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
             geometry_msgs::Twist robot_vel;
             odom_helper_.getRobotVelTwist(robot_vel);
             std::vector<geometry_msgs::Point> footprint_spec = costmap_ros_->getRobotFootprint();
-            if(pp_->ppUpdate(tf_, transformed_plan, global_pose, footprint_spec, robot_vel, cmd_vel))
+            std::vector<geometry_msgs::PoseStamped> local_plan;
+            ROS_WARN("updating pp data");
+            if(pp_->ppUpdate(tf_, global_pose, footprint_spec, robot_vel, local_plan, cmd_vel))
             {
-                std::vector<geometry_msgs::PoseStamped> local_plan;
                 //updateLocalPlan(local_plan, cmd_vel);
-                publishLocalPlan(transformed_plan);
+                publishLocalPlan(local_plan);
                 return true;
             }
             else
@@ -190,22 +199,22 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
                 return false;
             }
             //get the global plan that robot has to follow.
-            std::vector<geometry_msgs::PoseStamped> transformed_plan;
+            /*std::vector<geometry_msgs::PoseStamped> transformed_plan;
             if ( ! planner_util_.getLocalPlan(current_pose_, transformed_plan)) {
                 ROS_ERROR("Could not get local plan");
                 return false;
-            }
+            }*/
 
             //if the global plan passed in is empty... we won't do anything
-            if(transformed_plan.empty()) {
+            /*if(transformed_plan.empty()) {
                 ROS_WARN_NAMED("pp_local_planner", "Received an empty transformed plan.");
                 return false;
-            }
-            ROS_DEBUG_NAMED("pp_local_planner", "Received a transformed plan with %zu points.", transformed_plan.size());
+            }*/
+
+            //ROS_DEBUG_NAMED("pp_local_planner", "Received a transformed plan with %zu points.", transformed_plan.size());
             bool planner_ok;
-            ROS_WARN("plan size unmodified: %ld", transformed_plan.size());
-            planner_ok = ppComputeVelocityCommands(transformed_plan, current_pose_, cmd_vel);
-            ROS_WARN("plan size modified: %ld", transformed_plan.size());
+            ROS_WARN("computing base commands");
+            planner_ok = ppComputeVelocityCommands(current_pose_, cmd_vel);
             if(planner_ok)
             {
                 return true;

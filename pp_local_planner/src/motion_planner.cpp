@@ -2,51 +2,62 @@
 
 namespace motion_planner
 {
-    MotionPlanner::MotionPlanner(base_local_planner::LocalPlannerUtil* planner_util, double safe_factor): planner_util_{planner_util}
+    MotionPlanner::MotionPlanner(tf2_ros::Buffer* tf, base_local_planner::LocalPlannerUtil* planner_util, double safe_factor, std::string
+            motion_frame):tf_{tf}, planner_util_{planner_util}, motion_frame_{motion_frame}
     {
         safe_factor_ = safe_factor;
 
         //current costmap information 
         //need to check whether to delete this pointer or not.
         costmap = planner_util_->getCostmap();
-
-        //world map that we are using. Configured with costmap.
-        base_local_planner::WorldModel* world_model = new base_local_planner::CostmapModel(*costmap);
+        world_model = new base_local_planner::CostmapModel(*costmap);
     }
     MotionPlanner::MotionPlanner(){}
-    MotionPlanner::~MotionPlanner()
+
+    MotionPlanner::~MotionPlanner(){}
+
+    void MotionPlanner::clearVisitedPlan(const mpd::Plan::const_iterator upto_it)
     {
-        //should properly delete world model
-        /*if(world_model != NULL)
-          { 
-          delete world_model;
-          }
-          delete costmap;*/
+        global_plan_.erase(global_plan_.begin(), upto_it);
+    }
+
+    void MotionPlanner::clearVisitedPlan(int size)
+    {
+        if(!size == 0)
+        {
+            ROS_INFO("clearing...");
+            global_plan_.erase(global_plan_.begin(), global_plan_.begin() + size);
+        }
     }
 
     bool MotionPlanner::constructMotionPlan(mpd::Plan& plan, const
             geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel, std::vector<geometry_msgs::Point>
             footprint_spec, mpd::MotionPlan& motion_plan)
     {
+        ROS_INFO("constructing motion plan");
         //no motion plan if robot is in obstacle.
         mpd::ObstacleInfo robot_in_obstacle;
         if(updateObstacleInfo(global_pose, footprint_spec, robot_in_obstacle))
         {
-            //ROS_WARN("robot hits obstacle");
+            ROS_WARN("robot hits obstacle");
             return false;
         }
-        updatePlan(plan, global_pose);
-        mpd::MotionPose mp;
-        //find a safe window to look forward on the path based on robot planner_parameters
+
         base_local_planner::LocalPlannerLimits limits = planner_util_->getCurrentLimits();
+        mpd::MotionPose mp;
+        //getting the global plan.
+        //plan.clear();
+        getLocalPlan(global_pose, plan);
+
+
+        //find a safe window to look forward on the path based on robot planner_parameters
         double vmax = limits.max_vel_x;
         double max_acc = limits.acc_lim_x; 
-        double lateral_acc = 1.5; //need to be parameterised.
+        double lateral_acc = 3.5; //need to be parameterised.
         //min distance required for the robot to stop based on the robot base parameters.
         double min_stop_dist = pow(robot_vel.linear.x,2) / (2 * max_acc);
         //increasing the window size with an extra safety distance.
         double safe_distance = min_stop_dist + safe_factor_;
-        //ROS_WARN("safe_distance : %f", safe_distance);
         double arc_length = 0.0;
 
         geometry_msgs::PoseStamped pose_ = plan.at(0);
@@ -61,8 +72,10 @@ namespace motion_planner
         std::vector<geometry_msgs::PoseStamped>::const_iterator plan_it;
 
         //iterating over the global plan with in the safe window size to update velocity references.
-        for(plan_it = plan.begin(); plan_it != plan.end(); plan_it++)
+        for(plan_it = plan.begin(); plan_it != plan.end() - 1; plan_it++)
         {
+            mpd::CrossTrackInfo ct = crossTrackError(plan, global_pose);
+            //ROS_INFO("cross track error : %f", std::get<1>(ct));
             //estimating the arc length. 
             arc_length += mpd::euclidean(*plan_it, pose_);
             pose_ = *plan_it;
@@ -70,22 +83,29 @@ namespace motion_planner
             //generating motion plan up to safe distance.
             if(arc_length > safe_distance)
             {
-                //ROS_WARN("arc leght exceeds the safe distance");
                 break;
             }
+            /*if(isGoal(global_pose, plan.at(plan.size() - 2), limits.xy_goal_tolerance))
+              {
+              ROS_INFO("goal reached");
+              mp.twist_ref.linear.x = 0.0;
+              mp.twist_ref.angular.z = 0.0;
+              motion_plan.push_back(mp);
+              break; 
+              }*/
             mpd::ObstacleInfo obstacle_info;
             if(updateObstacleInfo((*plan_it), footprint_spec, obstacle_info))
             {
-                //if obstacle detected trim out the motion plan to stop the robot at a safe distance from the robot.
+                //if obstacle detected, trim out the motion plan to stop the robot at a safe distance from the robot.
                 double safe_length = arc_length - safe_factor_; 
                 if(arc_length > safe_length)
                 {
-                    //ROS_WARN("stopping motion planner, obstacle in global path.");
+                    ROS_INFO("safe plan length %f", arc_length);
                     trimMotionPlan(motion_plan, safe_length);
                 }
                 else
                 {
-                    //ROS_WARN("no room for a safe motion plan");
+                    ROS_WARN("no room for a safe motion plan");
                     motion_plan.clear(); // clear plan to put no motion plan since there is no enough space to move.
                 }
                 //update the obstacle informations.
@@ -93,6 +113,7 @@ namespace motion_planner
                 mp.obstacle_info = obstacle_info;
                 mp.curvature = INFINITY; //at obstacle position curvature is not calculated.
                 mp.arc_length = arc_length;
+                mp.obstacle = true;
                 mp.in_place = false;
                 mp.twist_ref.linear.x = 0.0;
                 mp.twist_ref.angular.z = 0.0;
@@ -103,16 +124,16 @@ namespace motion_planner
             {
                 mpd::MengerPoints path_points; 
                 double path_curvature;
-                if (plan_it == plan.begin() || plan_it == plan.end())
+                double no_of_points = 10;
+                if ((plan_it <= plan.begin() + no_of_points) || (plan_it >= plan.end() - no_of_points))
                 {
-                    //ROS_WARN("fixed curvature");
                     path_curvature = 0.01; //not calculating curvature for initial and final poses in the plan.
                 }
                 else
                 {
-                    //ROS_WARN("calculating menger curvature");
                     //curvature is calculated at a point using menger curvature.
-                    path_points = std::make_tuple(*(std::prev(plan_it, 1)), *plan_it, *(std::next(plan_it, 1)));
+                    path_points = std::make_tuple(*(std::prev(plan_it, no_of_points)), *plan_it, *(std::next(plan_it,
+                                    no_of_points)));
                     path_curvature = pathCurvature(path_points);
                 }
                 double angular_vel;
@@ -120,37 +141,69 @@ namespace motion_planner
                 mp.obstacle_info = obstacle_info; // cost > 1
                 mp.arc_length = arc_length;
                 double yaw_dif;
-                /*if(inPlace(global_pose, *plan_it, limits.xy_goal_tolerance, limits.yaw_goal_tolerance, yaw_dif))
+                if(mpd::euclidean(*plan_it, *std::next(plan_it, 1)) < 0.001)
                 {
-                    ROS_WARN("in-place required");
-                    mp.in_place = true;
-                    mp.twist_ref.linear.x = 0.0;
-                    mp.twist_ref.angular.z = yaw_dif;
-                    motion_plan.push_back(mp);
-                    break;
+                    int pose_count;
+                    mp.pose = getInplacePose(plan, plan_it, pose_count);
+                    if(inPlace(global_pose, mp.pose, limits.xy_goal_tolerance, limits.yaw_goal_tolerance,
+                                yaw_dif))
+                    {
+                        mp.visited_count = pose_count;
+                        mp.obstacle = false;
+                        mp.in_place = true;
+                        mp.twist_ref.linear.x = 0.0;
+                        mp.twist_ref.angular.z = yaw_dif;
+                        motion_plan.push_back(mp);
+                        break;
+                    }
                 }
                 else
-                {*/
-                    if(isGoal(global_pose, plan.back(), limits.xy_goal_tolerance, limits.yaw_goal_tolerance))
+                {
+                    mp.obstacle = false;
+                    mp.in_place = false;
+                    auto goal_point = plan.at(plan.size() -3);
+                    if(isGoal(*plan_it, goal_point, limits.xy_goal_tolerance))
                     {
+                        ROS_INFO("goal point X %f, Y %f robot point X %f Y %f", plan_it->pose.position.x,
+                        plan_it->pose.position.y, global_pose.pose.position.x, global_pose.pose.position.y);
                         mp.twist_ref.linear.x = 0.0;
                         mp.twist_ref.angular.z = 0.0; 
                     }
                     else
                     {
-                        //ROS_WARN("calculating forward velocity based path curvature");
+                        path_curvature = (path_curvature <= 0.01) ? 1 : path_curvature;
                         mp.twist_ref.linear.x = std::min(vmax, sqrt(lateral_acc/path_curvature));
-                        ROS_WARN("curvature : %f", path_curvature);
-                        ROS_WARN("curvature velocity : %f", sqrt(lateral_acc/path_curvature));
-                        ROS_WARN("max velocity : %f", vmax);
+                        //ROS_INFO("curvature : %f", path_curvature);
+                        //ROS_INFO("curvature velocity : %f", sqrt(lateral_acc/path_curvature));
+                        //ROS_INFO("point velocity : %f", mp.twist_ref.linear.x);
                         mp.twist_ref.angular.z = 0.0; // this is updated by purepuresuit now.
                     }
                     motion_plan.push_back(mp);
-                //}
+                }
             }
         }
         return true;
 
+    }
+
+    geometry_msgs::PoseStamped MotionPlanner::getInplacePose(const mpd::Plan& plan, mpd::Plan::const_iterator it, int&
+            pose_count)
+    {
+        geometry_msgs::PoseStamped in_place_pose;
+        for(auto it_ = it; it_ != plan.end() - 1; it_++)
+        {
+            if(mpd::euclidean(*it_, *std::next(it_, 1)) < 0.001)
+            {
+                in_place_pose = *std::next(it_, 1);
+            }
+            else
+            {
+                break;
+            }
+            pose_count = it_ - it;
+            //ROS_INFO("pose count %d", pose_count);
+        }
+        return in_place_pose;
     }
 
     bool MotionPlanner::getInstantaneousCommand(mpd::MotionPlan& mp, const geometry_msgs::PoseStamped&
@@ -159,23 +212,42 @@ namespace motion_planner
         base_local_planner::LocalPlannerLimits limits = planner_util_->getCurrentLimits();
         mpd::MotionPlan ramp_plan;
         rampMotionPlan(mp, global_pose, robot_vel, ramp_plan);
-        //ROS_WARN("ramp plan length : %f", ramp_plan.back().arc_length);
         std::vector<mpd::MotionPlan>::const_iterator mp_it;
+        //ROS_INFO("ramp plan size %ld", ramp_plan.size());
         if(ramp_plan.size() == 0)
         {
             ROS_WARN("No valid motion plan returning");
             return false;
         }
-        else if(ramp_plan.size() == 1)
+
+        if(ramp_plan.at(0).obstacle)
         {
-            double angular_vel = 0.0;
-            if(ramp_plan.at(0).in_place)
+            cmd_vel.linear.x = 0.0;
+            cmd_vel.linear.y = 0.0;
+            cmd_vel.angular.z = 0.0;
+            return true;
+        }
+
+        if(ramp_plan.at(0).in_place)
+        {
+            double angular_gain = 0.95;
+            double angular_vel = ramp_plan.at(0).twist_ref.angular.z * angular_gain;
+            int sign = mpd::sign(angular_vel);
+            angular_vel = std::min(fabs(ramp_plan.at(0).twist_ref.angular.z * angular_gain),
+                    limits.max_vel_theta);
+            angular_vel *= sign;
+            //int visited = closest_pose_it - ramp_plan.begin();
+            if(ramp_plan.at(0).twist_ref.angular.z <= limits.yaw_goal_tolerance)
             {
-                double angular_gain = 0.8;
-                angular_vel = std::min(std::max(fabs(ramp_plan.at(0).twist_ref.angular.z * angular_gain), limits.min_vel_theta), limits.max_vel_theta);
+                geometry_msgs::PoseStamped search_pose;
+                //transformPose(global_plan_.back().header.frame_id, ramp_plan.at(0).pose, search_pose);
+                //auto it = getPlanPoseIt(global_plan_, search_pose);
+                //ROS_INFO("removing size after inplace %ld", it - global_plan_.begin());
+                clearVisitedPlan(ramp_plan.at(0).visited_count); 
             }
-            ROS_WARN("plan is for inplace or obstacle instantaneous value");
-            cmd_vel = ramp_plan.at(0).twist_ref;
+            //ROS_WARN("plan is for inplace or obstacle, angular vel : %f", angular_vel);
+            cmd_vel.linear.x = 0.0;
+            cmd_vel.linear.y = 0.0;
             cmd_vel.angular.z = angular_vel;
             return true;
         }
@@ -184,28 +256,28 @@ namespace motion_planner
             mpd::MotionPlan::const_iterator closest_pose_it;
             double short_dis_to_line, a, b, c;
             getMinDistancePoseIt(ramp_plan, global_pose, closest_pose_it);
-            ROS_WARN("closest pose X : %f Y : %f", closest_pose_it->pose.pose.position.x,
-            closest_pose_it->pose.pose.position.y);
-            ROS_WARN("robot pose X : %f Y : %f", global_pose.pose.position.x,
-            global_pose.pose.position.y);
-            //ROS_WARN("min pose arc length : %f", closest_pose_it->arc_length);
-            //ROS_WARN("next to min pose arc length : %f", std::next(closest_pose_it)->arc_length);
             if(getLinearEquation(closest_pose_it->pose, (std::next(closest_pose_it)->pose), a, b, c))
             {
                 short_dis_to_line = getDisFromPointToLine(global_pose, a, b, c);
             }
             //distance from closest point to next reference point.
             double si = sqrt(pow(mpd::euclidean(closest_pose_it->pose, global_pose), 2) - pow(short_dis_to_line, 2));
-            //ROS_WARN("karnam : %f", mpd::euclidean(closest_pose_it->pose, global_pose));
-            //ROS_WARN("lambam, : %f", short_dis_to_line);
-            //ROS_WARN("si : %f", si);
+            ROS_INFO("si : %f", si);
             double segment_length = mpd::euclidean(closest_pose_it->pose, std::next(closest_pose_it, 1)->pose); 
-            double acc = (pow(std::next(closest_pose_it)->twist_ref.linear.x, 2) - pow(closest_pose_it->twist_ref.linear.x, 2))
-            / (2 * segment_length);
-            //ROS_WARN("acc : %f", acc);
-            //ROS_WARN("vo : %f", closest_pose_it->twist_ref.linear.x);
+            ROS_INFO("segment length : %f", segment_length);
+            double acc = (pow(std::next(closest_pose_it, 1)->twist_ref.linear.x, 2) - pow(closest_pose_it->twist_ref.linear.x, 2))
+                / (2 * segment_length);
+            ROS_INFO("acc : %f", acc);
+            //ROS_INFO("closest point vel : %f", closest_pose_it->twist_ref.linear.x);
+            //ROS_INFO("closest point next vel : %f", std::next(closest_pose_it, 1)->twist_ref.linear.x);
             cmd_vel.linear.x = sqrt(2 * acc * si + pow(closest_pose_it->twist_ref.linear.x, 2));
+            ROS_INFO("inst linear velocity : %f", cmd_vel.linear.x);
             cmd_vel.angular.z = 0.0;
+            geometry_msgs::PoseStamped search_pose;
+            ROS_INFO("size %ld", ramp_plan.size());
+            ROS_INFO("clearing plan size %ld", closest_pose_it - ramp_plan.begin());
+            clearVisitedPlan(closest_pose_it - ramp_plan.begin()); 
+            ROS_INFO("clearing visited plan");
             return true;
         }
     }
@@ -218,11 +290,10 @@ namespace motion_planner
         }
         //linear equation ax + by + c = 0
         // given two points p1(x1,y1), p2(x2,y2): a = y2 - y1, b = -1 * (x2 - x1), c = -1 * (y2 -y1)*x1 + (x2 - x1)*y1
-        //ROS_WARN("Linear Equation Calculation");
         a = end.pose.position.y - start.pose.position.y;
         b = (-1) * (end.pose.position.x - start.pose.position.x);
         c = (-1) * (end.pose.position.y - start.pose.position.y) * start.pose.position.x + (end.pose.position.x -
-        start.pose.position.x) * start.pose.position.y;
+                start.pose.position.x) * start.pose.position.y;
         return true;
     }
 
@@ -242,22 +313,57 @@ namespace motion_planner
             if(origin_to_pose_dis < min_distance)
             {
                 it = it_;
-                //ROS_WARN("min dis pose X : %f Y : %f", it->pose.pose.position.x, it->pose.pose.position.y);
                 min_distance = origin_to_pose_dis;
             }
         }
     }
-    
+
     double MotionPlanner::getDisFromPointToLine(const geometry_msgs::PoseStamped& pose, double a, double b, double c)
     {
         double distance = fabs(a * pose.pose.position.x + b * pose.pose.position.y + c) / sqrt(pow(a, 2) + pow(b, 2));
         return distance;
     }
 
-    void MotionPlanner::getMinForwardVelPose(mpd::MotionPlan& mpl, const geometry_msgs::PoseStamped& global_pose,
-    mpd::MotionPlan::iterator it)
+    void MotionPlanner::getGlobalPlan(mpd::Plan& plan)
     {
-        //for
+        plan = global_plan_;
+    }
+
+    bool MotionPlanner::getLocalPlan(const geometry_msgs::PoseStamped& global_pose, mpd::Plan& local_plan)
+    {
+        mpd::Plan global_plan;
+        getGlobalPlan(global_plan);
+        return planner_util_->getLocalPlan(global_pose, global_plan_, local_plan);
+    }
+
+    mpd::PosePair MotionPlanner::getPlanExtendPosePair(const mpd::Plan& plan)
+    {
+        mpd::PosePair extension_pair;
+        for(int i = plan.size() - 1; i >= 1; i--)
+        {
+            ROS_INFO("plan size: %ld", plan.size());
+            geometry_msgs::PoseStamped end_pose = plan.at(i);
+            ROS_INFO("end pose X : %f Y : %f", end_pose.pose.position.x, end_pose.pose.position.y);
+            geometry_msgs::PoseStamped start_pose = plan.at(i - 1); 
+            ROS_INFO("start pose X : %f Y : %f", start_pose.pose.position.x, start_pose.pose.position.y);
+            if(mpd::euclidean(end_pose, start_pose) > 0.001)
+            {
+                extension_pair =  std::make_pair(start_pose, end_pose);
+            }
+        }
+        return extension_pair;
+    }
+
+    mpd::Plan::const_iterator MotionPlanner::getPlanPoseIt(const mpd::Plan& plan, const geometry_msgs::PoseStamped&
+            search_pose)
+    {
+        //ROS_INFO("search pose X %f Y %f", search_pose.pose.position.x, search_pose.pose.position.y);
+        mpd::Plan::const_iterator it;
+        //it = std::find_if(plan.begin(), plan.end(), [search_pose](const geometry_msgs::PoseStamped& pose){return pose ==
+        //search_pose;});
+        it = std::find_if(plan.begin(), plan.end(), mpd::PoseCompare(search_pose)); 
+        //ROS_INFO("found pose X %f Y %f", it->pose.position.x, it->pose.position.y);
+        return it;
     }
 
     void MotionPlanner::rampMotionPlan(mpd::MotionPlan& mpl, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel,
@@ -265,13 +371,11 @@ namespace motion_planner
     {
         if(mpl.size() == 1)
         {
-            ROS_WARN("motion plan size one no ramp plan required");
             ramp_plan.push_back(mpl.at(0));
             return;
         }
         else
         {
-            //ROS_WARN("ramp plan is calculating");
             //search for min vel point in the plan.
             auto min_vel_mp = std::min_element(mpl.begin(), mpl.end(), [](const mpd::MotionPose& mp1, const
                         mpd::MotionPose& mp2) {return mp1.twist_ref.linear.x <= mp2.twist_ref.linear.x;});
@@ -279,12 +383,14 @@ namespace motion_planner
             //ramp velocity plan.
             base_local_planner::LocalPlannerLimits limits = planner_util_->getCurrentLimits();
             double min_vel_x = limits.min_vel_x;
+            ROS_INFO("min vel %f", min_vel_x);
             double v0 = std::max(min_vel_x, robot_vel.linear.x);
+            //ROS_INFO("v0 %f", v0);
             double lin_vel_final = min_vel_mp->twist_ref.linear.x;
 
             //to do bounding in both acc and dec
             //double acci = std::min(fabs(pow(lin_vel_final, 2) - pow(robot_vel.linear.x, 2) / (2 *
-                        //min_vel_mp->arc_length)), limits.acc_lim_x);
+            //min_vel_mp->arc_length)), limits.acc_lim_x);
             double acci = (pow(lin_vel_final, 2) - pow(v0, 2)) / (2 * min_vel_mp->arc_length);
 
             geometry_msgs::Twist inst_vel;
@@ -293,36 +399,39 @@ namespace motion_planner
             {
                 // Vi = sqrt(2 * a * Si + Vo^2)
                 double si = it->arc_length;
+                //ROS_INFO("arc length %f", si);
                 it->acc_lin = acci;
+                //ROS_INFO("acci %f", acci);
                 it->twist_ref.linear.x = sqrt((2 * acci * si) + pow(v0, 2));
+                //ROS_INFO("start vel %f", it->twist_ref.linear.x);
                 ramp_plan.push_back(*it);
             }
+            //ROS_INFO("ramp start vel %f", ramp_plan.front().twist_ref.linear.x);
 
         }
 
     }
 
     /*double disFromPointToLine(const geometry_msgs::PoseStamped& pose, double a, double b, double c)
-    {
-    }*/
+      {
+      }*/
 
     bool MotionPlanner::updateObstacleInfo(const geometry_msgs::PoseStamped& plan_pose, std::vector<geometry_msgs::Point>
             footprint_spec, mpd::ObstacleInfo& obstacle_info)
     {
-
         double x = plan_pose.pose.position.x;
         double y = plan_pose.pose.position.y;
         double theta = tf2::getYaw(plan_pose.pose.orientation);
-        double footprint_cost = 0.0;
-        //double footprint_cost = world_model->footprintCost(x, y, theta, footprint_spec);  	
-        //obstacle_info.obstacle_pose = plan_pose;
+        double footprint_cost = world_model->footprintCost(x, y, theta, footprint_spec);  	
         obstacle_info.cost = footprint_cost;
         if(footprint_cost < 0)
         {
+            ROS_INFO("obstacle");
             return true;
         }
         else
         {
+            ROS_INFO("no obstacle");
             return false;
         }
     }
@@ -353,8 +462,6 @@ namespace motion_planner
         getUnitVector(start, end, unit_vector);
         interpolated_pose.pose.position.x = start.pose.position.x + unit_vector.getX() * scale;
         interpolated_pose.pose.position.y = start.pose.position.y + unit_vector.getY() * scale;
-
-        //ROS_WARN("TEST start x %f y %f", interpolated_pose.pose.position.x, interpolated_pose.pose.position.y);
         return true;
 
     }
@@ -362,8 +469,6 @@ namespace motion_planner
 
     double MotionPlanner::getPlaneDistance(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped& pose_b)
     {
-        //ROS_WARN("point a : X : %f Y : %f ", pose_a.pose.position.x, pose_a.pose.position.y);
-        //ROS_WARN("point b : X : %f Y : %f ", pose_b.pose.position.b, pose_b.pose.position.y);
         tf2::Vector3 vector_a(pose_a.pose.position.x, pose_a.pose.position.y, pose_a.pose.position.z);
         vector_a.setZ(0);
         tf2::Vector3 vector_b(pose_b.pose.position.x, pose_b.pose.position.y, pose_b.pose.position.z);
@@ -381,48 +486,67 @@ namespace motion_planner
 
     double MotionPlanner::pathCurvature(const mpd::MengerPoints& path_points)
     {
-        //ROS_WARN("check");
         geometry_msgs::PoseStamped pose_a = std::get<0>(path_points); 
         geometry_msgs::PoseStamped pose_b = std::get<1>(path_points); 
         geometry_msgs::PoseStamped pose_c = std::get<2>(path_points);
 
+        //ROS_INFO("Ax : %f Ay : %f", pose_a.pose.position.x, pose_a.pose.position.x); 
+        //ROS_INFO("Bx : %f By : %f", pose_b.pose.position.x, pose_b.pose.position.x); 
+        //ROS_INFO("Cx : %f Cy : %f", pose_c.pose.position.x, pose_c.pose.position.x); 
         //menger curvature = 1/R = 4A/(|X-Y||Y-Z||Z-X|, X,Y,Z are given points.
         double A = fabs(pose_a.pose.position.x * (pose_b.pose.position.y - pose_c.pose.position.y) + pose_b.pose.position.x *
                 (pose_c.pose.position.y - pose_a.pose.position.y) + pose_c.pose.position.x * (pose_a.pose.position.y - pose_b.pose.position.y))/2;
 
+        //ROS_INFO("Menger A : %f", A);
+
         double menger_curvature = (4 * A) / (mpd::euclidean(pose_a, pose_b) * mpd::euclidean(pose_b, pose_c) * 
                 mpd::euclidean(pose_c, pose_a));
-        return menger_curvature * 10; //scaling the curvature value for velocity calculation.
-        //ROS_WARN("menger curvature : %f", menger_curvature);
+        return (A < 0.001) ? 1 : menger_curvature * 10; //scaling the curvature value for velocity calculation.
+        //return menger_curvature * 10; //scaling the curvature value for velocity calculation.
     }
 
-    bool MotionPlanner::inPlace(const geometry_msgs::PoseStamped& initial_pose, const geometry_msgs::PoseStamped&
-            final_pose, const double xy_goal_tolerance, const double yaw_goal_tolerance, double& yaw_dif)
+    bool MotionPlanner::inPlace(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped& pose_b, const double xy_goal_tolerance, const double yaw_goal_tolerance, double& yaw_dif)
     {
-        if(!isGoal(final_pose, initial_pose, xy_goal_tolerance,  yaw_goal_tolerance))
-        {
-            return false;
-        }
-        double initial_yaw = tf2::getYaw(initial_pose.pose.orientation);
-        double final_yaw = tf2::getYaw(final_pose.pose.orientation);
-        yaw_dif = angles::shortest_angular_distance(initial_yaw, final_yaw);
-        //ROS_WARN("yaw_dif : %f", yaw_dif);
-        bool in_place = (fabs(yaw_dif) > yaw_goal_tolerance) ? true : false;
+        /*if(!isGoal(pose, end_pose_, xy_goal_tolerance) && !isStart(pose, start_pose_, xy_goal_tolerance))
+          {
+          return false;
+          }*/
+        double path_a_yaw = tf2::getYaw(pose_a.pose.orientation);
+        double path_b_yaw = tf2::getYaw(pose_b.pose.orientation);
+        yaw_dif = angles::shortest_angular_distance(path_a_yaw, path_b_yaw);
+        bool in_place = ((fabs(yaw_dif) > yaw_goal_tolerance)) ? true : false;
         return in_place;
     }
 
 
-    bool MotionPlanner::isGoal(const geometry_msgs::PoseStamped& goal_pose, const geometry_msgs::PoseStamped&
-            global_pose, const double xy_goal_tolerance, const double yaw_goal_tolerance)
+    bool MotionPlanner::isGoal(const geometry_msgs::PoseStamped& check_pose, const geometry_msgs::PoseStamped&
+            end_pose, const double xy_goal_tolerance)
     {
-        if(mpd::euclidean(goal_pose, global_pose) < xy_goal_tolerance)
-        {
-            return true;
-        }
-        else
+        return (mpd::euclidean(check_pose, end_pose) < xy_goal_tolerance) ? true : false;
+    }
+
+    bool MotionPlanner::isGoalReached(const geometry_msgs::PoseStamped& robot_pose)
+    {
+        base_local_planner::LocalPlannerLimits limits = planner_util_->getCurrentLimits();
+        return (mpd::euclidean(robot_pose, end_pose_) < limits.xy_goal_tolerance) ? true : false;
+    }
+
+    bool MotionPlanner::isStart(const geometry_msgs::PoseStamped& check_pose, const geometry_msgs::PoseStamped&
+            start_pose, const double xy_goal_tolerance)
+    {
+        return (mpd::euclidean(check_pose, start_pose) < xy_goal_tolerance) ? true : false;
+    }
+
+    bool MotionPlanner::setGlobalPlan(const mpd::Plan& orig_global_plan)
+    {
+        global_plan_ = orig_global_plan;
+        //ROS_INFO("SBPL PLAN SIZE : %ld", orig_global_plan.size());
+        if(!transformPose(motion_frame_, orig_global_plan.front(), start_pose_) && !transformPose(motion_frame_,
+                    orig_global_plan.back(), end_pose_))
         {
             return false;
         }
+        return true;
     }
 
     void MotionPlanner::trimMotionPlan(mpd::MotionPlan& motion_plan, double safe_arc_length)
@@ -438,33 +562,28 @@ namespace motion_planner
         }
     }
 
-    void MotionPlanner::updatePlan(mpd::Plan& global_plan, const geometry_msgs::PoseStamped& global_pose)
+    bool MotionPlanner::transformPose(const std::string& global_frame, const
+            geometry_msgs::PoseStamped& pose, geometry_msgs::PoseStamped& transformed_pose)
     {
-        ROS_WARN("updating global plan");
-        double search_radius = 6.0;
-        double min_distance = 1000;
-        double arc_length = 0.0;
-        geometry_msgs::PoseStamped pose_;
-        mpd::Plan::iterator it;
-        for(auto it_ = global_plan.begin(); it_ != global_plan.end(); it_++)
-        {
-            arc_length += mpd::euclidean(pose_, *it_);
-            pose_ = *it_;
-            if(arc_length > search_radius)
-            {
-                break;
-            }
-            ROS_WARN("check it ");
-            double origin_to_pose_dis = getPlaneDistance(global_pose, *it_);
-            if(origin_to_pose_dis < min_distance)
-            {
-                it = it_;
-                ROS_WARN("update plan min dis pose X : %f Y : %f", it_->pose.position.x, it_->pose.position.y);
-                min_distance = origin_to_pose_dis;
-            }
+        try{
+            geometry_msgs::TransformStamped transform = tf_->lookupTransform(global_frame, ros::Time(),
+                    pose.header.frame_id, pose.header.stamp, pose.header.frame_id, ros::Duration(0.5));
+
+            tf2::doTransform(pose, transformed_pose, transform);
         }
-        global_plan.erase(global_plan.begin(), it);
-        ROS_WARN("updated global plan");
+        catch(tf2::LookupException& ex) {
+            ROS_ERROR("No Transform available Error: %s\n", ex.what());
+            return false;
+        }
+        catch(tf2::ConnectivityException& ex) {
+            ROS_ERROR("Connectivity Error: %s\n", ex.what());
+            return false;
+        }
+        catch(tf2::ExtrapolationException& ex) {
+            ROS_ERROR("Extrapolation Error: %s\n", ex.what());
+            return false;
+        }
+        return true;
     }
 
 };

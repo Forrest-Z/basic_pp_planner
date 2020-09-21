@@ -2,10 +2,10 @@
  *
  * Software License Agreement 
  *
- *  Copyright (c) Botsync.
+ *  Copyright (c) 2020, Botsync.
  *  All rights reserved.
  *
- * Author: botsync.co 
+ * Author: Gopan B.Chandran 
  *
  *********************************************************************/
 
@@ -90,7 +90,7 @@ namespace pp_local_planner {
              * @param cmd_vel will be filled with the velocity commands to be passed to the robot base.
              * @return True if a valid control is found, false otherwise.
              */
-            bool ppComputeVelocityCommands(std::vector<geometry_msgs::PoseStamped>& transformed_plan, const geometry_msgs::PoseStamped &global_pose, geometry_msgs::Twist& cmd_vel);
+            bool ppComputeVelocityCommands(const geometry_msgs::PoseStamped &global_pose, geometry_msgs::Twist& cmd_vel);
 
         private:
             /**

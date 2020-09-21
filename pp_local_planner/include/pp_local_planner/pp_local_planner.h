@@ -2,10 +2,10 @@
  *
  * Software License Agreement 
  *
- *  Copyright (c) 2009, Botsync.
+ *  Copyright (c) 2020, Botsync.
  *  All rights reserved.
  *
- * Authors: botsync.co 
+ * Author: Gopan B.Chandran 
  *
  *********************************************************************/
 
@@ -46,6 +46,17 @@ namespace pp_local_planner {
     {
         return (sqrt(pose1.pose.position.x * pose2.pose.position.x + pose1.pose.position.y * pose2.pose.position.y));
     }*/
+    
+   /* struct PoseCompare
+    {
+        bool operator ()(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped pose_b)
+        {
+            return (pose_a.pose.position.x == pose_b.pose.position.x && pose_a.pose.position.y == pose_b.pose.position.y
+            && pose_a.pose.position.z == pose_b.pose.position.z && pose_a.pose.orientation.x == pose_b.pose.orientation.y ==
+            pose_b.pose.orientation.y && pose_a.pose.orientation.w == pose_b.pose.orientation.w && pose_a.pose.orientation.z
+            == pose_b.pose.orientation.z);
+        }
+    };*/
     /**
      * @class PPLocalPlanner
      * @brief A class implementing a local planner using the purepursuit approach. 
@@ -58,7 +69,8 @@ namespace pp_local_planner {
              * @param costmap_ros A pointer to the costmap instance the planner should use
              * @param global_frame the frame id of the tf frame to use
              */
-            PPLocalPlanner(std::string name, base_local_planner::LocalPlannerUtil *planner_util);
+            PPLocalPlanner(std::string name, tf2_ros::Buffer* tf, base_local_planner::LocalPlannerUtil *planner_util, std::string
+            motion_frame);
 
             ~PPLocalPlanner();
 
@@ -71,9 +83,8 @@ namespace pp_local_planner {
              * sets new plan and resets state
              */
             bool setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan);
-            bool ppUpdate(const tf2_ros::Buffer* tf, std::vector<geometry_msgs::PoseStamped>& transformed_plan, const
-            geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, geometry_msgs::Twist& cmd_vel);
-
+            bool ppUpdate(const tf2_ros::Buffer* tf, const geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, std::vector<geometry_msgs::PoseStamped>& local_plan, geometry_msgs::Twist& cmd_vel);
+            bool isGoalReached(const geometry_msgs::PoseStamped& robot_pose);
         private:
 
             /*
@@ -87,7 +98,7 @@ namespace pp_local_planner {
             double checkFootprintCost(double x, double y, double theta, std::vector<geometry_msgs::Point> footprint_spec);
             double calculateDynamicLookahead(const geometry_msgs::Twist& robot_vel);
             bool computeLinearVelocity(std::vector<geometry_msgs::PoseStamped>& transformed_plan, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, const
-            geometry_msgs::PoseStamped& global_pose, geometry_msgs::Twist& base_command);
+            geometry_msgs::PoseStamped& global_pose, mpd::MotionPlan& mpl, geometry_msgs::Twist& base_command);
             bool computeAngularVelocity(const tf2_ros::Buffer* tf, const geometry_msgs::PoseStamped& lookahead_pose, const geometry_msgs::PoseStamped&
             global_pose, const geometry_msgs::Twist& robot_vel, double linear_vel, double& angular_vel);
             bool getLookaheadPoint(const tf2_ros::Buffer* tf, std::vector<geometry_msgs::PoseStamped>&

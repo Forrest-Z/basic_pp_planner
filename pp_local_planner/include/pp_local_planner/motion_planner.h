@@ -1,3 +1,14 @@
+/*********************************************************************
+ *
+ * Software License Agreement 
+ *
+ *  Copyright (c) 2020, Botsync.
+ *  All rights reserved.
+ *
+ * Author: Gopan B.Chandran 
+ *
+ *********************************************************************/
+
 #ifndef MOTION_PLANNER_H 
 #define MOTION_PLANNER_H 
 
@@ -28,21 +39,22 @@ namespace motion_planner
      */
     class MotionPlanner 
     {
-        
+
         public:
             /*
              *@brief motion planner constructor
              *@param pointer to local planner utility to get local planner parameters.
              *@param extra distance added with the minimum stopping distance of the robot for safe stopping.
              */
-            MotionPlanner(base_local_planner::LocalPlannerUtil* planer_util, double safe_factor);
-            
+            MotionPlanner(tf2_ros::Buffer* tf, base_local_planner::LocalPlannerUtil* planer_util, double safe_factor, std::string
+                    motion_frame);
+
             /*
              *@brief constructor
              */
             MotionPlanner();
             virtual ~MotionPlanner();
-            
+
             /*
              *@brief method to generate a motion plan that robot should apply.
              *@param global plan in world frame.
@@ -54,6 +66,14 @@ namespace motion_planner
             virtual bool constructMotionPlan(mpd::Plan& plan, const geometry_msgs::PoseStamped&
                     global_pose, const geometry_msgs::Twist& robot_vel, std::vector<geometry_msgs::Point>
                     footprint_spec, mpd::MotionPlan& motion_plan);
+            
+            double getDisFromPointToLine(const geometry_msgs::PoseStamped& pose, double a, double b, double c);
+            
+            void getGlobalPlan(mpd::Plan& global_plan);
+
+            geometry_msgs::PoseStamped getInplacePose(const mpd::Plan& plan, mpd::Plan::const_iterator it, int&
+            pose_count);
+            
             /*
              *@brief method to generate control commands for the robot base. Tracking angular velocity is not supported
              *now to be added.
@@ -62,11 +82,13 @@ namespace motion_planner
              *@param reference to cmd_vel to be updated.
              */
             bool getInstantaneousCommand(mpd::MotionPlan& mp, const geometry_msgs::PoseStamped& global_pose, const
-            geometry_msgs::Twist& robot_vel, geometry_msgs::Twist& cmd_vel);
+                    geometry_msgs::Twist& robot_vel, geometry_msgs::Twist& cmd_vel);
 
             bool getLinearEquation(const geometry_msgs::PoseStamped& start, const geometry_msgs::PoseStamped& end,
-            double& a, double& b, double& c);
+                    double& a, double& b, double& c);
             
+            bool getLocalPlan(const geometry_msgs::PoseStamped& global_pose, mpd::Plan& local_plan);
+
             /*
              *@brief method to get distance between two poses.
              *@param geometry pose 1
@@ -75,12 +97,25 @@ namespace motion_planner
              */
             double getPlaneDistance(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped& pose_b);
 
-            double getDisFromPointToLine(const geometry_msgs::PoseStamped& pose, double a, double b, double c);
-            
+            mpd::PosePair getPlanExtendPosePair(const mpd::Plan& plan);
+
             bool getUnitVector(const geometry_msgs::PoseStamped& start, const geometry_msgs::PoseStamped& end,
-            tf2::Vector3& unit_vector);
-            
+                    tf2::Vector3& unit_vector);
+
+            bool isGoalReached(const geometry_msgs::PoseStamped& robot_pose);
+
             bool linInterpolatedPose(const geometry_msgs::PoseStamped& start, const geometry_msgs::PoseStamped& end, const geometry_msgs::PoseStamped& global_pose, const double dynamic_lookahead, geometry_msgs::PoseStamped& interpolated_pose);
+
+            bool setGlobalPlan(const mpd::Plan& orig_global_plan);
+            
+            /*bool operator == (const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped& pose_b)
+             {   
+                return (pose_a.pose.position.x == pose_b.pose.position.x && pose_a.pose.position.y ==
+                  pose_b.pose.position.y && pose_a.pose.position.z == pose_b.pose.position.z && pose_a.pose.orientation.x ==
+                  pose_b.pose.orientation.y == pose_b.pose.orientation.y && pose_a.pose.orientation.w ==
+                  pose_b.pose.orientation.w && pose_a.pose.orientation.z == pose_b.pose.orientation.z);
+             }*/
+
 
         private:
 
@@ -93,12 +128,12 @@ namespace motion_planner
             mpd::CrossTrackInfo crossTrackError(const mpd::Plan& plan, const geometry_msgs::PoseStamped& global_pose);
 
             void getMinDistancePoseIt(const mpd::MotionPlan& search_plan, const geometry_msgs::PoseStamped& origin,
-            mpd::MotionPlan::const_iterator& it);
+                    mpd::MotionPlan::const_iterator& it);
+
+            mpd::Plan::const_iterator getPlanPoseIt(const mpd::Plan& plan, const geometry_msgs::PoseStamped& search_pose);
 
             void rampMotionPlan(mpd::MotionPlan& mpl, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel, mpd::MotionPlan& ramp_plan);
 
-            void getMinForwardVelPose(mpd::MotionPlan& mpl, const geometry_msgs::PoseStamped& global_pose,
-            mpd::MotionPlan::iterator it);
 
             /*
              *@brief method to get the forward path curvature information.
@@ -106,39 +141,57 @@ namespace motion_planner
              *@return magnitude path curvature.
              */
             double pathCurvature(const mpd::MengerPoints& path_points);
-            
+
             /*
              *@brief method to check and update plan for in place turn.
              *@param reference motion pose to update the in place turn plan.
              *@return return true if in place turn requires.
              */
-            bool inPlace(const geometry_msgs::PoseStamped& initial_pose, const geometry_msgs::PoseStamped&
-            final_pose, const double xy_goal_tolerance, const double yaw_goal_tolerance, double& yaw_dif);
+            bool inPlace(const geometry_msgs::PoseStamped& pose, const geometry_msgs::PoseStamped& global_pose, const double xy_goal_tolerance, const double yaw_goal_tolerance, double& yaw_dif);
 
-            bool isGoal(const geometry_msgs::PoseStamped& goal_pose, const geometry_msgs::PoseStamped& global_pose,
-            const double xy_goal_tolerance, const double yaw_goal_tolerance);
-           
+            bool isGoal(const geometry_msgs::PoseStamped& check_pose, const geometry_msgs::PoseStamped& end_pose,
+                    const double xy_goal_tolerance);
+
+            bool isStart(const geometry_msgs::PoseStamped& start_pose, const geometry_msgs::PoseStamped& global_pose,
+                    const double xy_goal_tolerance);
+
+
             /*
              *@brief method to trim motion plan portion based on arc length.
              *@param motion plan.
              *@param maximum allowed arc length of the plan.
              */
             void trimMotionPlan(mpd::MotionPlan& motion_plan, double safe_arc_length);
+
+            bool transformPose(const std::string& global_frame, const
+                    geometry_msgs::PoseStamped &pose, geometry_msgs::PoseStamped& transformed_pose);
+
+            void clearVisitedPlan(const mpd::Plan::const_iterator upto_it);
             
-            void updatePlan(mpd::Plan& global_plan, const geometry_msgs::PoseStamped& global_pose);
-            
+            void clearVisitedPlan(int size);
+
             /*
              *@brief method to update information about the obstacle present in the robot path. 
              *@param critical obstacle information.
              *@return true if there is critical obstacle.
              */
             bool updateObstacleInfo(const geometry_msgs::PoseStamped& plan_pose, std::vector<geometry_msgs::Point>
-            footprint_spec, mpd::ObstacleInfo& obstacle_info);
+                    footprint_spec, mpd::ObstacleInfo& obstacle_info);
 
+            bool updateMBPlan();
+            
+
+            tf2_ros::Buffer* tf_;
             base_local_planner::LocalPlannerUtil* planner_util_;
             base_local_planner::WorldModel* world_model;
             costmap_2d::Costmap2D* costmap;
+            mpd::Plan global_plan_;
+            mpd::Plan mb_global_plan_;
+            geometry_msgs::PoseStamped start_pose_;
+            geometry_msgs::PoseStamped end_pose_;
+            std::string motion_frame_;
             double safe_factor_;
+            bool accept_plan;
 
     };
 };
