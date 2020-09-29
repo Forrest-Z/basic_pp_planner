@@ -6,7 +6,7 @@
     This package provides an implementation of purepursuit path tracking algorithm. The purepursuit tracker send                            velocity commands to the base, inorder to track the given plan(currently support only global plan and no
     obstacle avoidance.
   </description>
-  <author>gopan@botsync.co</author>
+  <author>gopan.b@botsync.co</author>
   <maintainer email="botsync@botsync.co">botsync</maintainer>
   <license>BSD</license>
   <url>http://www.botsync.co</url>

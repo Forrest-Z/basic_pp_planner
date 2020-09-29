@@ -5,7 +5,7 @@
  *  Copyright (c) 2020, Botsync.
  *  All rights reserved.
  *
- * Author: botsync.co 
+ * Author: Gopan B.Chandran 
  *
  *********************************************************************/
 

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(pp_local_planner)
 
+add_compile_options(-std=c++11)
+
 find_package(catkin REQUIRED
         COMPONENTS
             angles
@@ -46,7 +48,7 @@ catkin_package(
         tf2_ros
 )
 
-add_library(pp_local_planner src/pp_local_planner.cpp src/pp_local_planner_ros.cpp)
+add_library(pp_local_planner src/pp_local_planner.cpp src/pp_local_planner_ros.cpp src/motion_planner.cpp)
 add_dependencies(pp_local_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(pp_local_planner ${catkin_LIBRARIES})
 
@@ -64,3 +66,16 @@ install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   PATTERN ".svn" EXCLUDE
 )
+
+#if(CATKIN_ENABLE_TESTING)
+#    find_package(rostest REQUIRED)
+#    add_rostest_gtest(motion_plannner_test test/motion_planner_basics.test test/test_mynode.cpp)
+#    target_link_libraries(motion_planner_test ${catkin_LIBRARIES} pp_local_planner)
+#endif()
+
+if (CATKIN_ENABLE_TESTING)
+    catkin_add_gtest(test_motion_planner_basics test/motion_planner_basics.cpp)
+    if(TARGET test_motion_planner_basics)
+        target_link_libraries(test_motion_planner_basics pp_local_planner)
+    endif()
+endif()

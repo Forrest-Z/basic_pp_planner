@@ -112,10 +112,12 @@ namespace pp_local_planner {
                 pose2.pose.position.y, 2)));
             }
             boost::mutex configuration_mutex_;
+            tf2_ros::Buffer* tf_; 
             base_local_planner::LocalPlannerUtil *planner_util_;
             motion_planner::MotionPlanner* mplnr;
             std::vector<geometry_msgs::PoseStamped> global_plan_;
             std::string frame_id_;
+            std::string motion_frame_;
             bool publish_traj;
             
             //object to get local planner limit parameters 
@@ -179,6 +181,7 @@ namespace pp_local_planner {
 
 
     };
+
     
 };
 #endif

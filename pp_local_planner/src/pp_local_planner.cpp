@@ -54,7 +54,7 @@ namespace pp_local_planner {
 
         pp_debug = new PurepursuitDebug;
 
-        mplnr = new motion_planner::MotionPlanner(tf_, planner_util_, 3.0, motion_frame_);
+        mplnr = new motion_planner::MotionPlanner(tf_, planner_util_, 1.0, motion_frame_);
 
 
     }
@@ -104,7 +104,6 @@ namespace pp_local_planner {
                 ROS_WARN("No lookahead point returning");
                 return false;
             }
-            //ROS_WARN("getting angular velocity");
             double angular_vel;
             if(!computeAngularVelocity(tf, lookahead_pose, global_pose, robot_vel, base_command.linear.x, angular_vel))
             {
@@ -138,7 +137,6 @@ namespace pp_local_planner {
 
         double dynamic_lookahead = calculateDynamicLookahead(robot_vel);
         double lateral_shift = dynamic_lookahead * sin(alpha); 
-        //ROS_WARN("lateral shift : %f", lateral_shift);
         double curvature = 2 * lateral_shift / pow(dynamic_lookahead, 2); 
         angular_vel = linear_vel * curvature;
 
@@ -151,7 +149,7 @@ namespace pp_local_planner {
     bool PPLocalPlanner::computeLinearVelocity(std::vector<geometry_msgs::PoseStamped>& transformed_plan, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, const
             geometry_msgs::PoseStamped& global_pose, mpd::MotionPlan& mpl, geometry_msgs::Twist& base_command)
     {
-            ROS_INFO("computing linear velocity");
+            ROS_WARN("computing linear velocity");
             if(!mplnr->constructMotionPlan(transformed_plan, global_pose, robot_vel, footprint_spec, mpl))
             {
                 return false;
@@ -189,17 +187,13 @@ namespace pp_local_planner {
             if(mp.getPlaneDistance(global_pose, transformed_plan.back()) <= dynamic_lookahead)
             {
                 mpd::PosePair plan_extend_pair;
-                ROS_INFO("created std pairs");
                 plan_extend_pair = mp.getPlanExtendPosePair(transformed_plan);
-                ROS_INFO("got extended pairs");
                 //auto end = transformed_plan.at((transformed_plan.size() - 2));
-                ROS_INFO("getting scale factor");
                 geometry_msgs::PoseStamped end = plan_extend_pair.second;
                 //auto start = transformed_plan.at((transformed_plan.size() - 3));
                 geometry_msgs::PoseStamped start = plan_extend_pair.first;
                 double scale = dynamic_lookahead - mp.getPlaneDistance(global_pose, end); 
                 //ROS_INFO("dld %f", dynamic_lookahead);
-                ROS_INFO("interpolating line with required scale factor");
                 if (mp.linInterpolatedPose(start, end, global_pose, scale, lookahead_pose))
                 {
                     pp_debug->updateDebug(lookahead_pose);
@@ -207,7 +201,6 @@ namespace pp_local_planner {
                     //ROS_INFO("returning");
                     //return true;
                 }
-                ROS_INFO("line extended");
                 return true;
             }
 
