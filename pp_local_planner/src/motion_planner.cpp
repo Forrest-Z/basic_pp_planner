@@ -371,7 +371,7 @@ namespace motion_planner
         mpd::PosePair extension_pair;
         for(int i = plan.size() - 1; i >= 1; i--)
         {
-            geometry_msgs::PoseStamped end_pose = plan.at(i);
+            geometry_msgs::PoseStamped end_pose = plan.at(plan.size() - 1);
             geometry_msgs::PoseStamped start_pose = plan.at(i - 1); 
             if(mpd::euclidean(end_pose, start_pose) > 0.01)
             {
@@ -490,8 +490,8 @@ namespace motion_planner
     {
         tf2::Vector3 unit_vector; 
         getUnitVector(start, end, unit_vector);
-        interpolated_pose.pose.position.x = start.pose.position.x + unit_vector.getX() * scale;
-        interpolated_pose.pose.position.y = start.pose.position.y + unit_vector.getY() * scale;
+        interpolated_pose.pose.position.x = end.pose.position.x + unit_vector.getX() * scale;
+        interpolated_pose.pose.position.y = end.pose.position.y + unit_vector.getY() * scale;
         return true;
 
     }

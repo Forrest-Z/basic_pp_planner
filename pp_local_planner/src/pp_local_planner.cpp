@@ -54,7 +54,7 @@ namespace pp_local_planner {
 
         pp_debug = new PurepursuitDebug;
 
-        mplnr = new motion_planner::MotionPlanner(tf_, planner_util_, 1.0, motion_frame_);
+        mplnr = new motion_planner::MotionPlanner(tf_, planner_util_, 2.0, motion_frame_);
 
 
     }
@@ -149,13 +149,13 @@ namespace pp_local_planner {
     bool PPLocalPlanner::computeLinearVelocity(std::vector<geometry_msgs::PoseStamped>& transformed_plan, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, const
             geometry_msgs::PoseStamped& global_pose, mpd::MotionPlan& mpl, geometry_msgs::Twist& base_command)
     {
-            ROS_WARN("computing linear velocity");
-            if(!mplnr->constructMotionPlan(transformed_plan, global_pose, robot_vel, footprint_spec, mpl))
-            {
-                return false;
-            }
-            mplnr->getInstantaneousCommand(mpl, global_pose, robot_vel, base_command);
-            return true; 
+        ROS_WARN("computing linear velocity");
+        if(!mplnr->constructMotionPlan(transformed_plan, global_pose, robot_vel, footprint_spec, mpl))
+        {
+            return false;
+        }
+        mplnr->getInstantaneousCommand(mpl, global_pose, robot_vel, base_command);
+        return true; 
     }
 
     bool PPLocalPlanner::getLookaheadPoint(const tf2_ros::Buffer* tf, std::vector<geometry_msgs::PoseStamped>& transformed_plan, const
@@ -163,49 +163,50 @@ namespace pp_local_planner {
     {
         std::vector<geometry_msgs::PoseStamped>::const_iterator plan_it;
         geometry_msgs::PoseStamped prev_ldp;
+        motion_planner::MotionPlanner mp;
+        double dynamic_lookahead = calculateDynamicLookahead(robot_vel);
         //iterating over the global path for finding the approximate point at the lookahead distance from the robot.
-        for(plan_it = transformed_plan.begin(); plan_it != transformed_plan.end() -1; plan_it++)
+        //extended lookahead point.
+        if(mp.getPlaneDistance(global_pose, transformed_plan.back()) <= dynamic_lookahead)
         {
-            motion_planner::MotionPlanner mp;
-            double dynamic_lookahead = calculateDynamicLookahead(robot_vel);
+            mpd::PosePair plan_extend_pair;
+            plan_extend_pair = mp.getPlanExtendPosePair(transformed_plan);
+            //auto end = transformed_plan.at((transformed_plan.size() - 2));
+            geometry_msgs::PoseStamped end = plan_extend_pair.second;
+            //auto start = transformed_plan.at((transformed_plan.size() - 3));
+            geometry_msgs::PoseStamped start = plan_extend_pair.first;
+            double scale = dynamic_lookahead - mp.getPlaneDistance(global_pose, end); 
             //ROS_INFO("dld %f", dynamic_lookahead);
-            //lookahead point in the path.
-            if(mp.getPlaneDistance(global_pose, *plan_it) > dynamic_lookahead)
+            if (mp.linInterpolatedPose(start, end, global_pose, scale, lookahead_pose))
             {
-                geometry_msgs::PoseStamped start = *(std::prev(plan_it, 1));
-                geometry_msgs::PoseStamped end = *(plan_it);
-                double scale = dynamic_lookahead - mp.getPlaneDistance(global_pose, start); 
-                if (mp.linInterpolatedPose(start, end, global_pose, scale, lookahead_pose))
-                {
-                    pp_debug->updateDebug(lookahead_pose);
-                    prev_ldp = lookahead_pose;
-                    return true;
-                }
-            }
-            
-            //extended lookahead point.
-            if(mp.getPlaneDistance(global_pose, transformed_plan.back()) <= dynamic_lookahead)
-            {
-                mpd::PosePair plan_extend_pair;
-                plan_extend_pair = mp.getPlanExtendPosePair(transformed_plan);
-                //auto end = transformed_plan.at((transformed_plan.size() - 2));
-                geometry_msgs::PoseStamped end = plan_extend_pair.second;
-                //auto start = transformed_plan.at((transformed_plan.size() - 3));
-                geometry_msgs::PoseStamped start = plan_extend_pair.first;
-                double scale = dynamic_lookahead - mp.getPlaneDistance(global_pose, end); 
-                //ROS_INFO("dld %f", dynamic_lookahead);
-                if (mp.linInterpolatedPose(start, end, global_pose, scale, lookahead_pose))
-                {
-                    pp_debug->updateDebug(lookahead_pose);
-                    prev_ldp = lookahead_pose;
-                    //ROS_INFO("returning");
-                    //return true;
-                }
+                pp_debug->updateDebug(lookahead_pose);
+                prev_ldp = lookahead_pose;
+                //ROS_INFO("returning");
                 return true;
             }
+            //return true;
+        }
+        else
+        {
+            for(plan_it = transformed_plan.begin(); plan_it != transformed_plan.end() -1; plan_it++)
+            {
+                //ROS_INFO("dld %f", dynamic_lookahead);
+                //lookahead point in the path.
+                if(mp.getPlaneDistance(global_pose, *plan_it) >= dynamic_lookahead)
+                {
+                    geometry_msgs::PoseStamped start = *(std::prev(plan_it, 1));
+                    geometry_msgs::PoseStamped end = *(plan_it);
+                    double scale = dynamic_lookahead - mp.getPlaneDistance(global_pose, start); 
+                    if (mp.linInterpolatedPose(start, end, global_pose, scale, lookahead_pose))
+                    {
+                        pp_debug->updateDebug(lookahead_pose);
+                        prev_ldp = lookahead_pose;
+                        return true;
+                    }
+                }
+            } 
 
         }
-        return false;
     }
 
     double PPLocalPlanner::calculateDynamicLookahead(const geometry_msgs::Twist& robot_vel)
@@ -225,7 +226,7 @@ namespace pp_local_planner {
         }
         return dynamic_lookahead;
     }
-    
+
     bool PPLocalPlanner::isGoalReached(const geometry_msgs::PoseStamped& robot_pose)
     {
         return mplnr->isGoalReached(robot_pose);
