@@ -37,7 +37,7 @@ namespace pp_local_planner {
     }
 
     PPLocalPlanner::PPLocalPlanner(std::string name, tf2_ros::Buffer* tf, base_local_planner::LocalPlannerUtil
-    *planner_util, std::string motion_frame): tf_{tf}, planner_util_{planner_util}, motion_frame_{motion_frame}
+            *planner_util, std::string motion_frame): tf_{tf}, planner_util_{planner_util}, motion_frame_{motion_frame}
     {
         ros::NodeHandle private_nh("~/" + name);
 
@@ -129,7 +129,7 @@ namespace pp_local_planner {
         lookahead_pose_global.header.frame_id = lookahead_pose.header.frame_id;
         lookahead_pose_global.header.stamp = ros::Time(0);
         lookahead_pose_global.pose = lookahead_pose.pose;
-        
+
         //purepursuit calculations
         double alpha = atan2(lookahead_pose_global.pose.position.y - global_pose.pose.position.y, lookahead_pose_global.pose.position.x - global_pose.pose.position.x) - tf2::getYaw(global_pose.pose.orientation);
 

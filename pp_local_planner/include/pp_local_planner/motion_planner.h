@@ -117,8 +117,6 @@ namespace motion_planner
              }*/
 
 
-        private:
-
             /*
              *@brief method to get the robot cross track error.
              *@param plan that robot is following.
@@ -141,6 +139,8 @@ namespace motion_planner
              *@return magnitude path curvature.
              */
             double pathCurvature(const mpd::MengerPoints& path_points);
+        
+        private:
 
             /*
              *@brief method to check and update plan for in place turn.

@@ -41,7 +41,7 @@ namespace mpd
         bool obstacle;
         bool in_place;
     };
-   
+
     typedef std::vector<geometry_msgs::PoseStamped> Plan;
     typedef std::vector<MotionPose> MotionPlan;
     typedef std::vector<geometry_msgs::Twist> VelocityPlan;
