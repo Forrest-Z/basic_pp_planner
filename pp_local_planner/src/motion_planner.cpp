@@ -61,6 +61,7 @@ namespace motion_planner
 
         //find a safe window to look forward on the path based on robot planner_parameters
         double vmax = limits.max_vel_x;
+        double vmin = limits.min_vel_x;
         double max_acc = limits.acc_lim_x; 
         double lateral_acc = 3.5; //need to be parameterised.
         //min distance required for the robot to stop based on the robot base parameters.
@@ -178,7 +179,10 @@ namespace motion_planner
                     else
                     {
                         path_curvature = (path_curvature <= 0.01) ? 1 : path_curvature;
-                        mp.twist_ref.linear.x = std::min(vmax, sqrt(lateral_acc/path_curvature));
+                        //fix for zero velocity profile, if goal is at end of a cuve.
+                        //use max(vmin, curv_vel) for reference velocity.
+                        //this will keep the reference velocity minimum at min vel.
+                        mp.twist_ref.linear.x = std::min(vmax, std::max(vmin, sqrt(lateral_acc/path_curvature)));
                         //ROS_INFO("curvature : %f", path_curvature);
                         //ROS_INFO("curvature velocity : %f", sqrt(lateral_acc/path_curvature));
                         //ROS_INFO("point velocity : %f", mp.twist_ref.linear.x);
