@@ -21,7 +21,7 @@
 #include <nav_msgs/Path.h>
 #include <tf2/utils.h>
 
-#include <nav_core/parameter_magic.h>
+//#include <nav_core/parameter_magic.h>
 
 //register this planner as a BaseLocalPlanner plugin
 PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalPlanner)
@@ -40,23 +40,18 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
 
             // update generic local planner params
             base_local_planner::LocalPlannerLimits limits;
-            limits.max_vel_trans = config.max_vel_trans;
-            limits.min_vel_trans = config.min_vel_trans;
             limits.max_vel_x = config.max_vel_x;
             limits.min_vel_x = config.min_vel_x;
             limits.max_vel_y = config.max_vel_y;
             limits.min_vel_y = config.min_vel_y;
-            limits.max_vel_theta = config.max_vel_theta;
-            limits.min_vel_theta = config.min_vel_theta;
+            limits.max_rot_vel = config.max_rot_vel;
+            limits.min_rot_vel = config.min_rot_vel;
             limits.acc_lim_x = config.acc_lim_x;
             limits.acc_lim_y = config.acc_lim_y;
             limits.acc_lim_theta = config.acc_lim_theta;
-            limits.acc_lim_trans = config.acc_lim_trans;
             limits.xy_goal_tolerance = config.xy_goal_tolerance;
             limits.yaw_goal_tolerance = config.yaw_goal_tolerance;
             limits.prune_plan = config.prune_plan;
-            limits.trans_stopped_vel = config.trans_stopped_vel;
-            limits.theta_stopped_vel = config.theta_stopped_vel;
             planner_util_.reconfigureCB(limits, config.restore_defaults);
             pp_->reconfigure(config);
         }
@@ -68,7 +63,7 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
 
         void PPLocalPlannerROS::initialize(
                 std::string name,
-                tf2_ros::Buffer* tf,
+                tf::TransformListener* tf,
                 costmap_2d::Costmap2DROS* costmap_ros) {
             if (!isInitialized()) {
 
@@ -95,12 +90,12 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
                 initialized_ = true;
 
                 // Warn about deprecated parameters -- remove this block in N-turtle
-                nav_core::warnRenamedParameter(private_nh, "max_vel_trans", "max_trans_vel");
+                /*nav_core::warnRenamedParameter(private_nh, "max_vel_trans", "max_trans_vel");
                 nav_core::warnRenamedParameter(private_nh, "min_vel_trans", "min_trans_vel");
                 nav_core::warnRenamedParameter(private_nh, "max_vel_theta", "max_rot_vel");
                 nav_core::warnRenamedParameter(private_nh, "min_vel_theta", "min_rot_vel");
                 nav_core::warnRenamedParameter(private_nh, "acc_lim_trans", "acc_limit_trans");
-                nav_core::warnRenamedParameter(private_nh, "theta_stopped_vel", "rot_stopped_vel");
+                nav_core::warnRenamedParameter(private_nh, "theta_stopped_vel", "rot_stopped_vel");*/
 
                 dsrv_ = new dynamic_reconfigure::Server<PPLocalPlannerConfig>(private_nh);
                 dynamic_reconfigure::Server<PPLocalPlannerConfig>::CallbackType cb = boost::bind(&PPLocalPlannerROS::reconfigureCB, this, _1, _2);
@@ -132,22 +127,24 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
                 ROS_ERROR("Could not get robot pose");
                 return false;
             }
-            /*if(pp_->isGoalReached(current_pose_))
+            geometry_msgs::PoseStamped current_pose;
+            poseStampedTFToMsg(current_pose_, current_pose);
+            if(pp_->isGoalReached(current_pose))
             { 
                return true;
                ROS_INFO("GOAL REACHED :)" );
             }
             
             ROS_INFO("GOAL NOT REACHED");
-            return false;*/
+            return false;
 
-            if(latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_)) {
+            /*if(latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_)) {
                 ROS_INFO("Goal reached");
                 return true;
             } else {
                 ROS_INFO("Goal not reached");
                 return false;
-            }
+            }*/
         }
 
         void PPLocalPlannerROS::publishLocalPlan(std::vector<geometry_msgs::PoseStamped>& path) {
@@ -176,7 +173,6 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
             odom_helper_.getRobotVelTwist(robot_vel);
             std::vector<geometry_msgs::Point> footprint_spec = costmap_ros_->getRobotFootprint();
             std::vector<geometry_msgs::PoseStamped> local_plan;
-            ROS_WARN("updating pp data");
             if(pp_->ppUpdate(tf_, global_pose, footprint_spec, robot_vel, local_plan, cmd_vel))
             {
                 //updateLocalPlan(local_plan, cmd_vel);
@@ -213,8 +209,9 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
 
             //ROS_DEBUG_NAMED("pp_local_planner", "Received a transformed plan with %zu points.", transformed_plan.size());
             bool planner_ok;
-            ROS_WARN("computing base commands");
-            planner_ok = ppComputeVelocityCommands(current_pose_, cmd_vel);
+            geometry_msgs::PoseStamped current_pose;
+            poseStampedTFToMsg(current_pose_, current_pose);
+            planner_ok = ppComputeVelocityCommands(current_pose, cmd_vel);
             if(planner_ok)
             {
                 return true;

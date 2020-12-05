@@ -69,7 +69,7 @@ namespace pp_local_planner {
              * @param costmap_ros A pointer to the costmap instance the planner should use
              * @param global_frame the frame id of the tf frame to use
              */
-            PPLocalPlanner(std::string name, tf2_ros::Buffer* tf, base_local_planner::LocalPlannerUtil *planner_util, std::string
+            PPLocalPlanner(std::string name, tf::TransformListener* tf, base_local_planner::LocalPlannerUtil *planner_util, std::string
             motion_frame);
 
             ~PPLocalPlanner();
@@ -83,7 +83,7 @@ namespace pp_local_planner {
              * sets new plan and resets state
              */
             bool setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan);
-            bool ppUpdate(const tf2_ros::Buffer* tf, const geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, std::vector<geometry_msgs::PoseStamped>& local_plan, geometry_msgs::Twist& cmd_vel);
+            bool ppUpdate(const tf::TransformListener* tf, const geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, std::vector<geometry_msgs::PoseStamped>& local_plan, geometry_msgs::Twist& cmd_vel);
             bool isGoalReached(const geometry_msgs::PoseStamped& robot_pose);
         private:
 
@@ -99,9 +99,8 @@ namespace pp_local_planner {
             double calculateDynamicLookahead(const geometry_msgs::Twist& robot_vel);
             bool computeLinearVelocity(std::vector<geometry_msgs::PoseStamped>& transformed_plan, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, const
             geometry_msgs::PoseStamped& global_pose, mpd::MotionPlan& mpl, geometry_msgs::Twist& base_command);
-            bool computeAngularVelocity(const tf2_ros::Buffer* tf, const geometry_msgs::PoseStamped& lookahead_pose, const geometry_msgs::PoseStamped&
-            global_pose, const geometry_msgs::Twist& robot_vel, double linear_vel, double& angular_vel);
-            bool getLookaheadPoint(const tf2_ros::Buffer* tf, std::vector<geometry_msgs::PoseStamped>&
+            bool computeAngularVelocity(const tf::TransformListener* tf , const geometry_msgs::PoseStamped& lookahead_pose, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel, double linear_vel, double& angular_vel);
+            bool getLookaheadPoint(const tf::TransformListener* tf, std::vector<geometry_msgs::PoseStamped>&
             transformed_plan, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel,
             geometry_msgs::PoseStamped& lookahead_pose);
             bool makeVelocityPlan(const std::vector<geometry_msgs::PoseStamped>& transformed_plan, const
@@ -112,7 +111,7 @@ namespace pp_local_planner {
                 pose2.pose.position.y, 2)));
             }
             boost::mutex configuration_mutex_;
-            tf2_ros::Buffer* tf_; 
+            tf::TransformListener* tf_; 
             base_local_planner::LocalPlannerUtil *planner_util_;
             motion_planner::MotionPlanner* mplnr;
             std::vector<geometry_msgs::PoseStamped> global_plan_;
@@ -138,6 +137,8 @@ namespace pp_local_planner {
                 PurepursuitDebug()
                 {
                     this->pose_debug_pub = this->nh_debug.advertise<geometry_msgs::PoseStamped>("/lookahead_pose", 1);
+                    this->start_debug_pub = this->nh_debug.advertise<geometry_msgs::PoseStamped>("/start_pose", 1);
+                    this->end_debug_pub = this->nh_debug.advertise<geometry_msgs::PoseStamped>("/end_pose", 1);
                 }
                
                 /*
@@ -161,19 +162,32 @@ namespace pp_local_planner {
                     this->lookahead_pose = pose;
                 }
 
+                void updateLineExtendDebug(geometry_msgs::PoseStamped start_pose, geometry_msgs::PoseStamped end_pose)
+                {
+                    this->start_pose_ = start_pose;
+                    this->end_pose_ = end_pose;
+                }
+
+
 
                 void publishDebug()
                 {
                     this->pose_debug_pub.publish(this->lookahead_pose);
+                    this->start_debug_pub.publish(this->start_pose_);
+                    this->end_debug_pub.publish(this->end_pose_);
                 }
 
                 private:
                     ros::NodeHandle nh_debug;
                     ros::Publisher pose_debug_pub; 
+                    ros::Publisher start_debug_pub; 
+                    ros::Publisher end_debug_pub; 
                     double dynamic_lookahead;
                     double lateral_shift;
                     double curvature;
                     geometry_msgs::PoseStamped lookahead_pose;
+                    geometry_msgs::PoseStamped start_pose_;
+                    geometry_msgs::PoseStamped end_pose_;
             };
 
             PurepursuitConfig pp_config;

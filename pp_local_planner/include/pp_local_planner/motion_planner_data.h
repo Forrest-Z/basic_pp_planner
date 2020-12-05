@@ -24,8 +24,15 @@ namespace mpd
 {
     struct ObstacleInfo
     {
-        //geometry_msgs::PoseStamped obstacle_pose;
-        double cost;
+        public:
+            double cost;
+            double dynam_obst_stop_dis = 3.0;
+            double static_ob_stop_dis = 1.0;
+            /*std::string obstacle_type;
+            double getSafeStopDistance(std::string ob_type)
+            {
+                return (ob_type == "dynamic") ? dynam_obst_stop_dis : static_obst_stop_dis;
+            }*/
     };
 
     //container for holding critical obstacle information in the global path.

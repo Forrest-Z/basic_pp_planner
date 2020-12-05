@@ -46,8 +46,7 @@ namespace motion_planner
              *@param pointer to local planner utility to get local planner parameters.
              *@param extra distance added with the minimum stopping distance of the robot for safe stopping.
              */
-            MotionPlanner(tf2_ros::Buffer* tf, base_local_planner::LocalPlannerUtil* planer_util, double safe_factor, std::string
-                    motion_frame);
+            MotionPlanner(tf::TransformListener* tf, base_local_planner::LocalPlannerUtil* planer_util, double safe_factor, std::string motion_frame);
 
             /*
              *@brief constructor
@@ -127,10 +126,11 @@ namespace motion_planner
 
             void getMinDistancePoseIt(const mpd::MotionPlan& search_plan, const geometry_msgs::PoseStamped& origin,
                     mpd::MotionPlan::const_iterator& it);
+            
+            void getMinDistancePoseIt(const mpd::Plan& search_plan, const geometry_msgs::PoseStamped& origin,
+                    mpd::Plan::const_iterator& it);
 
             mpd::Plan::const_iterator getPlanPoseIt(const mpd::Plan& plan, const geometry_msgs::PoseStamped& search_pose);
-
-            void rampMotionPlan(mpd::MotionPlan& mpl, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel, mpd::MotionPlan& ramp_plan);
 
 
             /*
@@ -181,7 +181,7 @@ namespace motion_planner
             bool updateMBPlan();
             
 
-            tf2_ros::Buffer* tf_;
+            tf::TransformListener* tf_;
             base_local_planner::LocalPlannerUtil* planner_util_;
             base_local_planner::WorldModel* world_model;
             costmap_2d::Costmap2D* costmap;
@@ -189,9 +189,14 @@ namespace motion_planner
             mpd::Plan mb_global_plan_;
             geometry_msgs::PoseStamped start_pose_;
             geometry_msgs::PoseStamped end_pose_;
+            ros::Publisher ref_pose_pub;
+            ros::Publisher closest_pose_pub;
             std::string motion_frame_;
             double safe_factor_;
             bool accept_plan;
+            bool debug;
+            bool plan_executed;
+            bool critical_error;
 
     };
 };

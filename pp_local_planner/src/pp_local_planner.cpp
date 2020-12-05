@@ -36,7 +36,7 @@ namespace pp_local_planner {
         pp_config.limits_ = planner_util_->getCurrentLimits();
     }
 
-    PPLocalPlanner::PPLocalPlanner(std::string name, tf2_ros::Buffer* tf, base_local_planner::LocalPlannerUtil
+    PPLocalPlanner::PPLocalPlanner(std::string name, tf::TransformListener* tf, base_local_planner::LocalPlannerUtil
             *planner_util, std::string motion_frame): tf_{tf}, planner_util_{planner_util}, motion_frame_{motion_frame}
     {
         ros::NodeHandle private_nh("~/" + name);
@@ -54,8 +54,7 @@ namespace pp_local_planner {
 
         pp_debug = new PurepursuitDebug;
 
-        mplnr = new motion_planner::MotionPlanner(tf_, planner_util_, 2.0, motion_frame_);
-
+        mplnr = new motion_planner::MotionPlanner(tf_, planner_util_, 3.0, motion_frame_);
 
     }
 
@@ -74,7 +73,7 @@ namespace pp_local_planner {
         return false;
     }
 
-    bool PPLocalPlanner::ppUpdate(const tf2_ros::Buffer* tf, const geometry_msgs::PoseStamped& global_pose,
+    bool PPLocalPlanner::ppUpdate(const tf::TransformListener* tf, const geometry_msgs::PoseStamped& global_pose,
             std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel,
             std::vector<geometry_msgs::PoseStamped>& transformed_plan, geometry_msgs::Twist& cmd_vel)
     {
@@ -82,7 +81,7 @@ namespace pp_local_planner {
         mpd::MotionPlan mpl;
         if(!computeLinearVelocity(transformed_plan, footprint_spec, robot_vel, global_pose, mpl, base_command))
         {
-            ROS_WARN("not able to make a valid linear velocity plan");
+            ROS_WARN("FAILED TO GENERATE A VALID VELOCITY PLAN");
             return false;
         }
 
@@ -101,16 +100,15 @@ namespace pp_local_planner {
             lookahead_pose.header.frame_id = transformed_plan.at(0).header.frame_id;
             if(!getLookaheadPoint(tf, transformed_plan, global_pose, robot_vel, lookahead_pose))
             {
-                ROS_WARN("No lookahead point returning");
+                ROS_WARN("FAILED TO FIND LOOKAHEAD POINT");
                 return false;
             }
             double angular_vel;
             if(!computeAngularVelocity(tf, lookahead_pose, global_pose, robot_vel, base_command.linear.x, angular_vel))
             {
-                ROS_WARN("not able to make a valid angular velocity plan");
+                ROS_WARN("FAILED TO GENERATE A VALID ANGULAR VELOCITY PLAN");
                 return false;
             }
-            //ROS_WARN("got angular velocity");
             cmd_vel.linear.x = base_command.linear.x;
             //cmd_vel.linear.x = 0.0;
             cmd_vel.linear.y = 0.0;
@@ -122,7 +120,7 @@ namespace pp_local_planner {
     }
 
 
-    bool PPLocalPlanner::computeAngularVelocity(const tf2_ros::Buffer* tf, const geometry_msgs::PoseStamped& lookahead_pose, const
+    bool PPLocalPlanner::computeAngularVelocity(const tf::TransformListener* tf, const geometry_msgs::PoseStamped& lookahead_pose, const
             geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel, double linear_vel, double& angular_vel)
     {
         geometry_msgs::PoseStamped lookahead_pose_global;
@@ -149,7 +147,6 @@ namespace pp_local_planner {
     bool PPLocalPlanner::computeLinearVelocity(std::vector<geometry_msgs::PoseStamped>& transformed_plan, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, const
             geometry_msgs::PoseStamped& global_pose, mpd::MotionPlan& mpl, geometry_msgs::Twist& base_command)
     {
-        ROS_WARN("computing linear velocity");
         if(!mplnr->constructMotionPlan(transformed_plan, global_pose, robot_vel, footprint_spec, mpl))
         {
             return false;
@@ -158,40 +155,24 @@ namespace pp_local_planner {
         return true; 
     }
 
-    bool PPLocalPlanner::getLookaheadPoint(const tf2_ros::Buffer* tf, std::vector<geometry_msgs::PoseStamped>& transformed_plan, const
-            geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel, geometry_msgs::PoseStamped& lookahead_pose)
+    bool PPLocalPlanner::getLookaheadPoint(const tf::TransformListener* tf, std::vector<geometry_msgs::PoseStamped>& transformed_plan, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel, geometry_msgs::PoseStamped& lookahead_pose)
     {
+        if(transformed_plan.size() < 5)
+        {
+            ROS_ERROR("NO PLAN TO TRAVEL : ERROR");
+            return false;
+        }
         std::vector<geometry_msgs::PoseStamped>::const_iterator plan_it;
         geometry_msgs::PoseStamped prev_ldp;
         motion_planner::MotionPlanner mp;
         double dynamic_lookahead = calculateDynamicLookahead(robot_vel);
         //iterating over the global path for finding the approximate point at the lookahead distance from the robot.
         //extended lookahead point.
-        if(mp.getPlaneDistance(global_pose, transformed_plan.back()) <= dynamic_lookahead)
-        {
-            mpd::PosePair plan_extend_pair;
-            plan_extend_pair = mp.getPlanExtendPosePair(transformed_plan);
-            //auto end = transformed_plan.at((transformed_plan.size() - 2));
-            geometry_msgs::PoseStamped end = plan_extend_pair.second;
-            //auto start = transformed_plan.at((transformed_plan.size() - 3));
-            geometry_msgs::PoseStamped start = plan_extend_pair.first;
-            double scale = dynamic_lookahead - mp.getPlaneDistance(global_pose, end); 
-            //ROS_INFO("dld %f", dynamic_lookahead);
-            if (mp.linInterpolatedPose(start, end, global_pose, scale, lookahead_pose))
+        //fixed bad allocation error when robot is deviating too much away from path.
+        //in this case first point is selected point then applying std::prev() was giving error
+        //now plan is started from the second point.
+        for(plan_it = transformed_plan.begin() + 1; plan_it != transformed_plan.end() -1; plan_it++)
             {
-                pp_debug->updateDebug(lookahead_pose);
-                prev_ldp = lookahead_pose;
-                //ROS_INFO("returning");
-                return true;
-            }
-            //return true;
-        }
-        else
-        {
-            for(plan_it = transformed_plan.begin(); plan_it != transformed_plan.end() -1; plan_it++)
-            {
-                //ROS_INFO("dld %f", dynamic_lookahead);
-                //lookahead point in the path.
                 if(mp.getPlaneDistance(global_pose, *plan_it) >= dynamic_lookahead)
                 {
                     geometry_msgs::PoseStamped start = *(std::prev(plan_it, 1));
@@ -203,11 +184,31 @@ namespace pp_local_planner {
                         prev_ldp = lookahead_pose;
                         return true;
                     }
+                    else
+                    {
+                        ROS_ERROR("LOOKAHEAD CALCULATION FAILED");
+                        return false;
+                    }
                 }
             } 
-
+            mpd::PosePair plan_extend_pair;
+            plan_extend_pair = mp.getPlanExtendPosePair(transformed_plan);
+            geometry_msgs::PoseStamped end = plan_extend_pair.second;
+            geometry_msgs::PoseStamped start = plan_extend_pair.first;
+            pp_debug->updateLineExtendDebug(start, end);
+            double scale = dynamic_lookahead - mp.getPlaneDistance(global_pose, end); 
+            if (mp.linInterpolatedPose(start, end, global_pose, scale, lookahead_pose))
+            {
+                pp_debug->updateDebug(lookahead_pose);
+                prev_ldp = lookahead_pose;
+                return true;
+            }
+            else
+            {
+                ROS_ERROR("LOOKAHEAD CALCULATION FAILED");
+                return false;
+            }
         }
-    }
 
     double PPLocalPlanner::calculateDynamicLookahead(const geometry_msgs::Twist& robot_vel)
     {
