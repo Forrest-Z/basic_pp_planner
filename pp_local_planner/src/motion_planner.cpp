@@ -267,10 +267,11 @@ namespace motion_planner
             //temp fix for in_place false at goal position
             //added an extra orientation accuracy check
             //genrate angular velocity.
-            double angular_vel = (ramp_plan.at(0).in_place == true) ? ramp_plan.at(0).twist_ref.angular.z : yaw;
-            int sign = mpd::sign(angular_vel);
-            angular_vel = (std::min(std::max(limits.min_rot_vel, fabs(angular_vel)), limits.max_rot_vel)) * sign *
+            double angular_diff = (position <= limits.xy_goal_tolerance) ? yaw : ramp_plan.at(0).twist_ref.angular.z;
+            int sign = mpd::sign(angular_diff);
+            double angular_vel = (std::min(std::max(limits.min_rot_vel, fabs(angular_diff)), limits.max_rot_vel)) * sign *
                 angular_gain;
+            angular_vel = (fabs(angular_diff) <= limits.yaw_goal_tolerance) ? 0.0 : angular_vel;
             if(ramp_plan.at(0).twist_ref.angular.z <= limits.yaw_goal_tolerance && ramp_plan.at(0).in_place)
             {
                 geometry_msgs::PoseStamped search_pose;
