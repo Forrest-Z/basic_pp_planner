@@ -47,6 +47,7 @@ namespace mpd
         int visited_count;
         bool obstacle;
         bool in_place;
+        bool error;
     };
 
     typedef std::vector<geometry_msgs::PoseStamped> Plan;

@@ -132,10 +132,8 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
             if(pp_->isGoalReached(current_pose))
             { 
                return true;
-               ROS_INFO("GOAL REACHED :)" );
             }
-            
-            ROS_INFO("GOAL NOT REACHED");
+
             return false;
 
             /*if(latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_)) {

@@ -85,7 +85,7 @@ namespace pp_local_planner {
             return false;
         }
 
-        if(mpl.at(0).in_place || mpl.at(0).obstacle)
+        if(mpl.at(0).in_place || mpl.at(0).obstacle || mpl.at(0).error)
         {
             cmd_vel.linear.x = base_command.linear.x;
             //cmd_vel.linear.x = 0.0;

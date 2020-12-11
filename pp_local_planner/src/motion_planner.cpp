@@ -86,12 +86,14 @@ namespace motion_planner
         critical_error = false;
 
         //vmax = (std::get<1>(ct) >= cross_track_control) ? limits.min_vel_x : limits.max_vel_x; //not working this mehtod.
-        
+
         if(std::get<1>(ct) >= cross_track_stop)
         {
             ROS_WARN("CROSS TRACK ERROR CRITICAL STOPPING");
             critical_error = true; //using this variable stop producing velocity for this plan.
-            return false;
+            mp.error = true;
+            motion_plan.push_back(mp);
+            return true;
         }
 
         else if(std::get<1>(ct) >= cross_track_warn)
@@ -120,6 +122,7 @@ namespace motion_planner
                 mp.curvature = INFINITY; //at obstacle position curvature is not calculated.
                 mp.obstacle = true;
                 mp.in_place = false;
+                mp.error = false;
                 //if obstacle detected, trim out the motion plan to stop the robot at a safe distance from the robot.
                 double obst_stop_dist = 1.5;
 
@@ -162,11 +165,13 @@ namespace motion_planner
                 mp.pose = *plan_it;
                 mp.obstacle_info = obstacle_info; // cost > 1
                 mp.arc_length = arc_length;
+                mp.error = false;
                 double yaw_dif;
 
                 //fix for sudden acceleration after inplace and also unnecessary inplace.
                 int pose_count = 0;
                 geometry_msgs::PoseStamped temp_pose = getInplacePose(plan, plan_it, pose_count);
+                ref_pose_pub.publish(temp_pose);
                 if(inPlace(global_pose, temp_pose, limits.xy_goal_tolerance, limits.yaw_goal_tolerance,
                             yaw_dif) && (mpd::euclidean(*plan_it, *std::next(plan_it, 1)) < 0.001))
                 {
@@ -228,8 +233,7 @@ namespace motion_planner
             }
             pose_count = it_ - it;
         }
-        //return in_place_pose;
-        ROS_WARN("SOMETHING WRONG IN INPLACE POSE CALCULATION");
+        //ROS_WARN("SOMETHING WRONG IN INPLACE POSE CALCULATION");
     }
 
     bool MotionPlanner::getInstantaneousCommand(mpd::MotionPlan& ramp_plan, const geometry_msgs::PoseStamped&
@@ -243,6 +247,15 @@ namespace motion_planner
             ROS_WARN("NO VALID MOTION PLAN");
             return false;
         }
+
+        if(ramp_plan.at(0).error)
+        {
+            cmd_vel.linear.x = 0.0;
+            cmd_vel.linear.y = 0.0;
+            cmd_vel.angular.z = 0.0;
+            return true;
+        }
+
 
         if(ramp_plan.at(0).obstacle)
         {
@@ -258,7 +271,39 @@ namespace motion_planner
         poseStampedTFToMsg(tf_goal_pose, goal_pose);
         double position = mpd::euclidean(global_pose, goal_pose);
 
-        if(ramp_plan.at(0).in_place || position <= limits.xy_goal_tolerance)
+        mpd::Plan::const_iterator closest_global_pose_it;
+        mpd::MotionPlan::const_iterator closest_pose_it;
+        double short_dis_to_line, a, b, c;
+        getMinDistancePoseIt(ramp_plan, global_pose, closest_pose_it);
+        if(getLinearEquation(closest_pose_it->pose, (std::next(closest_pose_it)->pose), a, b, c))
+        {
+            short_dis_to_line = getDisFromPointToLine(global_pose, a, b, c);
+        }
+
+        double min_stop_dist = pow(limits.max_vel_x, 2) / (2 * limits.acc_lim_x) ;//+ mpd::euclidean(ramp_plan.begin(), closest_pose_it->pose)
+
+        std::vector<mpd::MotionPose>::iterator vel_point_it;
+        for(vel_point_it = ramp_plan.begin() + (closest_pose_it - ramp_plan.begin()); vel_point_it != ramp_plan.end(); vel_point_it++)
+        {
+            if(mpd::euclidean(global_pose, vel_point_it->pose) >= min_stop_dist)
+            {
+                break;
+            }
+        }
+
+        auto min_vel_mp = std::min_element(ramp_plan.begin(), vel_point_it, [](const mpd::MotionPose& mp1, const
+                    mpd::MotionPose& mp2) {return mp1.twist_ref.linear.x <= mp2.twist_ref.linear.x;});
+
+        double euclid_to_minpose = mpd::euclidean(global_pose, min_vel_mp->pose);
+
+        mpd::MotionPose inplace_mp = ramp_plan.at(0);
+
+        if(min_vel_mp->in_place && euclid_to_minpose < limits.xy_goal_tolerance)
+        {
+            inplace_mp = *min_vel_mp;
+        }
+
+        if(inplace_mp.in_place || position <= limits.xy_goal_tolerance)
         {
             double angular_gain = 0.5;
             double goal_yaw = tf2::getYaw(goal_pose.pose.orientation);
@@ -266,16 +311,17 @@ namespace motion_planner
             double yaw = angles::shortest_angular_distance(robot_yaw, goal_yaw);
             //temp fix for in_place false at goal position
             //added an extra orientation accuracy check
-            //genrate angular velocity.
-            double angular_diff = (position <= limits.xy_goal_tolerance) ? yaw : ramp_plan.at(0).twist_ref.angular.z;
+            //generate angular velocity.
+            double angular_diff = (position <= limits.xy_goal_tolerance) ? yaw : inplace_mp.twist_ref.angular.z;
             int sign = mpd::sign(angular_diff);
             double angular_vel = (std::min(std::max(limits.min_rot_vel, fabs(angular_diff)), limits.max_rot_vel)) * sign *
                 angular_gain;
             angular_vel = (fabs(angular_diff) <= limits.yaw_goal_tolerance) ? 0.0 : angular_vel;
-            if(ramp_plan.at(0).twist_ref.angular.z <= limits.yaw_goal_tolerance && ramp_plan.at(0).in_place)
+            if(inplace_mp.twist_ref.angular.z <= limits.yaw_goal_tolerance && inplace_mp.in_place)
             {
                 geometry_msgs::PoseStamped search_pose;
-                clearVisitedPlan(ramp_plan.at(0).visited_count); 
+                //clearVisitedPlan(ramp_plan.at(0).visited_count); 
+                clearVisitedPlan(inplace_mp.visited_count); 
             }
             else
             {
@@ -289,39 +335,15 @@ namespace motion_planner
         }
         else
         {
-            mpd::Plan::const_iterator closest_global_pose_it;
-            mpd::MotionPlan::const_iterator closest_pose_it;
-            double short_dis_to_line, a, b, c;
-            getMinDistancePoseIt(ramp_plan, global_pose, closest_pose_it);
-            if(getLinearEquation(closest_pose_it->pose, (std::next(closest_pose_it)->pose), a, b, c))
-            {
-                short_dis_to_line = getDisFromPointToLine(global_pose, a, b, c);
-            }
-
-            double min_stop_dist = pow(limits.max_vel_x, 2) / (2 * limits.acc_lim_x) ;//+ mpd::euclidean(ramp_plan.begin(), closest_pose_it->pose)
-            ROS_INFO("MIN STOP DIS : %f", min_stop_dist);
-
-            std::vector<mpd::MotionPose>::iterator vel_point_it;
-            for(vel_point_it = ramp_plan.begin() + (closest_pose_it - ramp_plan.begin()); vel_point_it != ramp_plan.end(); vel_point_it++)
-            {
-                if(mpd::euclidean(global_pose, vel_point_it->pose) >= min_stop_dist)
-                {
-                    break;
-                }
-            }
-
-            auto min_vel_mp = std::min_element(ramp_plan.begin(), vel_point_it, [](const mpd::MotionPose& mp1, const
-                        mpd::MotionPose& mp2) {return mp1.twist_ref.linear.x <= mp2.twist_ref.linear.x;});
 
             trimMotionPlan(ramp_plan, min_vel_mp->arc_length );
 
             double final_vel_x = limits.min_vel_x;
-            if(position <= limits.xy_goal_tolerance && !plan_executed)
+            if((position <= limits.xy_goal_tolerance || euclid_to_minpose <= 0.1) && !plan_executed)
             {
                 final_vel_x = 0.0;
                 plan_executed = true; //once reached goal then not issue any velocity until new plan.
             }
-            ROS_WARN("FINAL VEL X : %f", final_vel_x);
             cmd_vel.linear.x = std::min(limits.max_vel_x, std::max(final_vel_x, min_vel_mp->twist_ref.linear.x));
             if(std::isnan(cmd_vel.linear.x))
             {
@@ -329,10 +351,10 @@ namespace motion_planner
                 cmd_vel.linear.x = 0.0;
             }
             cmd_vel.angular.z = 0.0;
-            ROS_INFO("min vel : %f", min_vel_mp->twist_ref.linear.x);
+            //ROS_INFO("REF VEL : %f", min_vel_mp->twist_ref.linear.x);
             clearVisitedPlan(closest_pose_it - ramp_plan.begin()); 
             closest_pose_pub.publish(closest_pose_it->pose);
-            ref_pose_pub.publish(min_vel_mp->pose);
+            //ref_pose_pub.publish(min_vel_mp->pose);
             return true; 
 
         }
@@ -421,12 +443,12 @@ namespace motion_planner
     }
 
     /*mpd::Plan::const_iterator MotionPlanner::getPlanPoseIt(const mpd::Plan& plan, const geometry_msgs::PoseStamped&
-            search_pose)
-    {
-        mpd::Plan::const_iterator it;
-        it = std::find_if(plan.begin(), plan.end(), mpd::PoseCompare(search_pose)); 
-        return it;
-    }*/
+      search_pose)
+      {
+      mpd::Plan::const_iterator it;
+      it = std::find_if(plan.begin(), plan.end(), mpd::PoseCompare(search_pose)); 
+      return it;
+      }*/
 
 
     bool MotionPlanner::updateObstacleInfo(const geometry_msgs::PoseStamped& plan_pose, std::vector<geometry_msgs::Point>
@@ -543,7 +565,7 @@ namespace motion_planner
             ROS_INFO("GOAL");
             return true;
         }
-        ROS_INFO("NOT GOAL");
+        //ROS_INFO("NOT GOAL");
         return false;
 
     }
