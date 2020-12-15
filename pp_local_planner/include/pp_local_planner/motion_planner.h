@@ -81,7 +81,7 @@ namespace motion_planner
              *@param reference to cmd_vel to be updated.
              */
             bool getInstantaneousCommand(mpd::MotionPlan& mp, const geometry_msgs::PoseStamped& global_pose, const
-                    geometry_msgs::Twist& robot_vel, geometry_msgs::Twist& cmd_vel);
+            geometry_msgs::Twist& robot_vel, const std::vector<geometry_msgs::Point>& footprint_spec, geometry_msgs::Twist& cmd_vel);
 
             bool getLinearEquation(const geometry_msgs::PoseStamped& start, const geometry_msgs::PoseStamped& end,
                     double& a, double& b, double& c);
@@ -139,6 +139,9 @@ namespace motion_planner
              *@return magnitude path curvature.
              */
             double pathCurvature(const mpd::MengerPoints& path_points);
+            
+            bool trajectoryCollision(double linear_vel, double angular_vel, double frequency,
+            const std::vector<geometry_msgs::Point>& footprint_spec, const geometry_msgs::PoseStamped& robot_pose);
         
         private:
 
@@ -169,6 +172,7 @@ namespace motion_planner
             void clearVisitedPlan(const mpd::Plan::const_iterator upto_it);
             
             void clearVisitedPlan(int size);
+
 
             /*
              *@brief method to update information about the obstacle present in the robot path. 

@@ -109,11 +109,18 @@ namespace pp_local_planner {
                 ROS_WARN("FAILED TO GENERATE A VALID ANGULAR VELOCITY PLAN");
                 return false;
             }
+
             cmd_vel.linear.x = base_command.linear.x;
-            //cmd_vel.linear.x = 0.0;
             cmd_vel.linear.y = 0.0;
             cmd_vel.angular.z = angular_vel;
-            //cmd_vel.angular.z = 0.0;
+           
+        }
+        if(mplnr->trajectoryCollision(robot_vel.linear.x, cmd_vel.angular.z, 5.0, footprint_spec, global_pose))
+        {
+            ROS_WARN("POSSIBLE TRAJECTORY COLLISION");
+            cmd_vel.linear.x = 0.0;
+            cmd_vel.linear.y = 0.0;
+            cmd_vel.angular.z = 0.0;
         }
         pp_debug->publishDebug();
         return true;
@@ -151,7 +158,7 @@ namespace pp_local_planner {
         {
             return false;
         }
-        mplnr->getInstantaneousCommand(mpl, global_pose, robot_vel, base_command);
+        mplnr->getInstantaneousCommand(mpl, global_pose, robot_vel, footprint_spec, base_command);
         return true; 
     }
 

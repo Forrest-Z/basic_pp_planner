@@ -171,7 +171,7 @@ namespace motion_planner
                 //fix for sudden acceleration after inplace and also unnecessary inplace.
                 int pose_count = 0;
                 geometry_msgs::PoseStamped temp_pose = getInplacePose(plan, plan_it, pose_count);
-                ref_pose_pub.publish(temp_pose);
+                //ref_pose_pub.publish(temp_pose);
                 if(inPlace(global_pose, temp_pose, limits.xy_goal_tolerance, limits.yaw_goal_tolerance,
                             yaw_dif) && (mpd::euclidean(*plan_it, *std::next(plan_it, 1)) < 0.001))
                 {
@@ -237,7 +237,7 @@ namespace motion_planner
     }
 
     bool MotionPlanner::getInstantaneousCommand(mpd::MotionPlan& ramp_plan, const geometry_msgs::PoseStamped&
-            global_pose, const geometry_msgs::Twist& robot_vel, geometry_msgs::Twist& cmd_vel)
+            global_pose, const geometry_msgs::Twist& robot_vel, const std::vector<geometry_msgs::Point>& footprint_spec, geometry_msgs::Twist& cmd_vel)
     {
         base_local_planner::LocalPlannerLimits limits = planner_util_->getCurrentLimits();
         double min_vel = limits.min_vel_x;
@@ -599,6 +599,48 @@ namespace motion_planner
                 break;
             }
         }
+    }
+
+    bool MotionPlanner::trajectoryCollision(double linear_vel, double angular_vel, double frequency,
+            const std::vector<geometry_msgs::Point>& footprint_spec, const geometry_msgs::PoseStamped& robot_pose)
+    {
+        double x,y,theta,size;
+        x = robot_pose.pose.position.x;
+        y = robot_pose.pose.position.y;
+        theta = tf2::getYaw(robot_pose.pose.orientation);
+        size = 5;
+        geometry_msgs::PoseStamped temp_pose;
+        
+        //for checking more trajectory collision points in inplace rotation.
+        if(linear_vel < 0.01)         
+        {
+            size = 15;
+        }
+        for(int i = 0; i < size; i++)
+        {
+            x += linear_vel * cos(theta) * (1 / frequency);
+            y += linear_vel * sin(theta) * ( 1 / frequency);
+            theta += angular_vel * (1 / frequency);
+            temp_pose.header.frame_id = robot_pose.header.frame_id;
+            temp_pose.pose.position.x = x;
+            temp_pose.pose.position.y = y;
+            temp_pose.pose.position.z = 1.0;
+            tf2::Quaternion quat;
+            quat.setRPY( 0.0, 0.0, theta);
+            //temp_pose.pose.orientation.z = sin(theta/2.0);
+            temp_pose.pose.orientation.z = quat[2];
+            //temp_pose.pose.orientation.w = cos(theta/2.0);
+            temp_pose.pose.orientation.w = quat[3];
+            ref_pose_pub.publish(temp_pose);
+            double footprint_cost = world_model->footprintCost(x, y, theta, footprint_spec);  	
+            if(footprint_cost < 0)
+            {
+                return true;
+            }
+        }
+        return false;
+
+
     }
 
     bool MotionPlanner::transformPose(const std::string& global_frame, const
