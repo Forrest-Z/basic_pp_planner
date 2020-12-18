@@ -130,6 +130,8 @@ namespace motion_planner
             void getMinDistancePoseIt(const mpd::Plan& search_plan, const geometry_msgs::PoseStamped& origin,
                     mpd::Plan::const_iterator& it);
 
+            void getReferencePose(geometry_msgs::PoseStamped& ref_pose);
+
             mpd::Plan::const_iterator getPlanPoseIt(const mpd::Plan& plan, const geometry_msgs::PoseStamped& search_pose);
 
 
@@ -142,6 +144,9 @@ namespace motion_planner
             
             bool trajectoryCollision(double linear_vel, double angular_vel, double frequency,
             const std::vector<geometry_msgs::Point>& footprint_spec, const geometry_msgs::PoseStamped& robot_pose);
+            
+            bool transformPose(const std::string& global_frame, const
+                    geometry_msgs::PoseStamped &pose, geometry_msgs::PoseStamped& transformed_pose);
         
         private:
 
@@ -165,9 +170,7 @@ namespace motion_planner
              *@param maximum allowed arc length of the plan.
              */
             void trimMotionPlan(mpd::MotionPlan& motion_plan, double safe_arc_length);
-
-            bool transformPose(const std::string& global_frame, const
-                    geometry_msgs::PoseStamped &pose, geometry_msgs::PoseStamped& transformed_pose);
+            
 
             void clearVisitedPlan(const mpd::Plan::const_iterator upto_it);
             
@@ -193,6 +196,7 @@ namespace motion_planner
             mpd::Plan mb_global_plan_;
             geometry_msgs::PoseStamped start_pose_;
             geometry_msgs::PoseStamped end_pose_;
+            geometry_msgs::PoseStamped ref_pose_;
             ros::Publisher ref_pose_pub;
             ros::Publisher closest_pose_pub;
             std::string motion_frame_;

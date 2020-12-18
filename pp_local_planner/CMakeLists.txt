@@ -48,7 +48,12 @@ catkin_package(
         tf2_ros
 )
 
-add_library(pp_local_planner src/pp_local_planner.cpp src/pp_local_planner_ros.cpp src/motion_planner.cpp)
+add_library(pp_local_planner 
+    src/pp_local_planner.cpp 
+    src/pp_local_planner_ros.cpp 
+    src/motion_planner.cpp
+    src/motion_target_follower.cpp)
+
 add_dependencies(pp_local_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(pp_local_planner ${catkin_LIBRARIES})
 

@@ -16,6 +16,8 @@
 #include <Eigen/Core>
 
 #include "motion_planner.h"
+#include "pp_local_planner/motion_target_follower.h"
+
 #include <pp_local_planner/PPLocalPlannerConfig.h>
 
 //for creating a local cost grid
@@ -99,7 +101,9 @@ namespace pp_local_planner {
             double calculateDynamicLookahead(const geometry_msgs::Twist& robot_vel);
             bool computeLinearVelocity(std::vector<geometry_msgs::PoseStamped>& transformed_plan, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, const
             geometry_msgs::PoseStamped& global_pose, mpd::MotionPlan& mpl, geometry_msgs::Twist& base_command);
-            bool computeAngularVelocity(const tf::TransformListener* tf , const geometry_msgs::PoseStamped& lookahead_pose, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel, double linear_vel, double& angular_vel);
+            bool computeAngularVelocity(const tf::TransformListener* tf , const geometry_msgs::PoseStamped&
+            lookahead_pose, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel,
+            double& linear_vel, double& angular_vel);
             bool getLookaheadPoint(const tf::TransformListener* tf, std::vector<geometry_msgs::PoseStamped>&
             transformed_plan, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel,
             geometry_msgs::PoseStamped& lookahead_pose);
@@ -121,6 +125,9 @@ namespace pp_local_planner {
             
             //object to get local planner limit parameters 
             typedef base_local_planner::LocalPlannerLimits planner_limits; 
+            
+            motion_target_follower::MotionTargetFollower* mtf;
+            
             //structure containing purepursuit configurations.
             struct PurepursuitConfig
             {

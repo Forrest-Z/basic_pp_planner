@@ -295,6 +295,8 @@ namespace motion_planner
                     mpd::MotionPose& mp2) {return mp1.twist_ref.linear.x <= mp2.twist_ref.linear.x;});
 
         double euclid_to_minpose = mpd::euclidean(global_pose, min_vel_mp->pose);
+        ref_pose_ = min_vel_mp->pose;
+        ref_pose_pub.publish(ref_pose_);
 
         mpd::MotionPose inplace_mp = ramp_plan.at(0);
 
@@ -450,6 +452,10 @@ namespace motion_planner
       return it;
       }*/
 
+    void MotionPlanner::getReferencePose(geometry_msgs::PoseStamped& ref_pose)
+    {
+        ref_pose = ref_pose_;
+    }
 
     bool MotionPlanner::updateObstacleInfo(const geometry_msgs::PoseStamped& plan_pose, std::vector<geometry_msgs::Point>
             footprint_spec, mpd::ObstacleInfo& obstacle_info)
@@ -495,6 +501,7 @@ namespace motion_planner
         getUnitVector(start, end, unit_vector);
         interpolated_pose.pose.position.x = end.pose.position.x + unit_vector.getX() * scale;
         interpolated_pose.pose.position.y = end.pose.position.y + unit_vector.getY() * scale;
+        interpolated_pose.pose.orientation = end.pose.orientation;
         return true;
 
     }
@@ -631,7 +638,7 @@ namespace motion_planner
             temp_pose.pose.orientation.z = quat[2];
             //temp_pose.pose.orientation.w = cos(theta/2.0);
             temp_pose.pose.orientation.w = quat[3];
-            ref_pose_pub.publish(temp_pose);
+            //ref_pose_pub.publish(temp_pose);
             double footprint_cost = world_model->footprintCost(x, y, theta, footprint_spec);  	
             if(footprint_cost < 0)
             {
