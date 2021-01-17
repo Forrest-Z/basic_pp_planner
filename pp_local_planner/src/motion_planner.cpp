@@ -16,6 +16,7 @@ namespace motion_planner
     MotionPlanner::MotionPlanner(tf::TransformListener* tf, base_local_planner::LocalPlannerUtil* planner_util, double safe_factor, std::string
             motion_frame):tf_{tf}, planner_util_{planner_util}, motion_frame_{motion_frame}
     {
+	initializeConfig();
         safe_factor_ = safe_factor;
 
         //current costmap information 
@@ -61,10 +62,10 @@ namespace motion_planner
         //getting the global plan.
         getLocalPlan(global_pose, plan);
         //find a safe window to look forward on the path based on robot planner_parameters
-        double vmax = limits.max_vel_x;
-        double vmin = limits.min_vel_x;
-        double max_acc = limits.acc_lim_x; 
-        double lateral_acc = 3.5; //need to be parameterised.
+        double vmax = config.vmax;
+        double vmin = config.vmin;
+        double max_acc = config.acc_x; 
+        double lateral_acc = config.lat_acc; //need to be parameterised.
         //min distance required for the robot to stop based on the robot base parameters.
         //double min_stop_dist = pow(robot_vel.linear.x,2) / (2 * max_acc);
         double min_stop_dist = pow(vmax, 2) / (2 * max_acc);
@@ -81,8 +82,8 @@ namespace motion_planner
         mpd::MotionPose initial_safe_motion_pose;
         std::vector<geometry_msgs::PoseStamped>::const_iterator plan_it;
         mpd::CrossTrackInfo ct = crossTrackError(plan, global_pose);
-        double cross_track_warn = 0.15;
-        double cross_track_stop = 0.5;
+        double cross_track_warn = config.cross_track_warn;
+        double cross_track_stop = config.cross_track_error;
         critical_error = false;
 
         //vmax = (std::get<1>(ct) >= cross_track_control) ? limits.min_vel_x : limits.max_vel_x; //not working this mehtod.
@@ -98,7 +99,7 @@ namespace motion_planner
 
         else if(std::get<1>(ct) >= cross_track_warn)
         {
-            vmax = limits.min_vel_x;
+            vmax = config.vmin;
             ROS_WARN("CROSS TRACK ERROR WARN REDUCING SPEED");
         }
 
@@ -124,7 +125,7 @@ namespace motion_planner
                 mp.in_place = false;
                 mp.error = false;
                 //if obstacle detected, trim out the motion plan to stop the robot at a safe distance from the robot.
-                double obst_stop_dist = 1.5;
+                double obst_stop_dist = config.obst_stop_dist;
 
                 if(arc_length >= obst_stop_dist) 
                 {
@@ -240,7 +241,7 @@ namespace motion_planner
             global_pose, const geometry_msgs::Twist& robot_vel, const std::vector<geometry_msgs::Point>& footprint_spec, geometry_msgs::Twist& cmd_vel)
     {
         base_local_planner::LocalPlannerLimits limits = planner_util_->getCurrentLimits();
-        double min_vel = limits.min_vel_x;
+        double min_vel = config.vmin;
         std::vector<mpd::MotionPlan>::const_iterator mp_it;
         if(ramp_plan.size() == 0)
         {
@@ -280,7 +281,7 @@ namespace motion_planner
             short_dis_to_line = getDisFromPointToLine(global_pose, a, b, c);
         }
 
-        double min_stop_dist = pow(limits.max_vel_x, 2) / (2 * limits.acc_lim_x) ;//+ mpd::euclidean(ramp_plan.begin(), closest_pose_it->pose)
+        double min_stop_dist = pow(config.vmax, 2) / (2 * config.acc_x) ;//+ mpd::euclidean(ramp_plan.begin(), closest_pose_it->pose)
 
         std::vector<mpd::MotionPose>::iterator vel_point_it;
         for(vel_point_it = ramp_plan.begin() + (closest_pose_it - ramp_plan.begin()); vel_point_it != ramp_plan.end(); vel_point_it++)
@@ -307,7 +308,7 @@ namespace motion_planner
 
         if(inplace_mp.in_place || position <= limits.xy_goal_tolerance)
         {
-            double angular_gain = 0.5;
+            double angular_gain = config.acc_w;
             double goal_yaw = tf2::getYaw(goal_pose.pose.orientation);
             double robot_yaw = tf2::getYaw(global_pose.pose.orientation);
             double yaw = angles::shortest_angular_distance(robot_yaw, goal_yaw);
@@ -316,8 +317,7 @@ namespace motion_planner
             //generate angular velocity.
             double angular_diff = (position <= limits.xy_goal_tolerance) ? yaw : inplace_mp.twist_ref.angular.z;
             int sign = mpd::sign(angular_diff);
-            double angular_vel = (std::min(std::max(limits.min_rot_vel, fabs(angular_diff)), limits.max_rot_vel)) * sign *
-                angular_gain;
+            double angular_vel = (std::min(std::max(config.wmin, fabs(angular_diff)), config.wmax)) * sign * angular_gain;
             angular_vel = (fabs(angular_diff) <= limits.yaw_goal_tolerance) ? 0.0 : angular_vel;
             if(inplace_mp.twist_ref.angular.z <= limits.yaw_goal_tolerance && inplace_mp.in_place)
             {
@@ -340,13 +340,13 @@ namespace motion_planner
 
             trimMotionPlan(ramp_plan, min_vel_mp->arc_length );
 
-            double final_vel_x = limits.min_vel_x;
+            double final_vel_x = config.vmin;
             if((position <= limits.xy_goal_tolerance || euclid_to_minpose <= 0.1) && !plan_executed)
             {
                 final_vel_x = 0.0;
                 plan_executed = true; //once reached goal then not issue any velocity until new plan.
             }
-            cmd_vel.linear.x = std::min(limits.max_vel_x, std::max(final_vel_x, min_vel_mp->twist_ref.linear.x));
+            cmd_vel.linear.x = std::min(config.vmax, std::max(final_vel_x, min_vel_mp->twist_ref.linear.x));
             if(std::isnan(cmd_vel.linear.x))
             {
                 ROS_ERROR("CRITICAL ERROR STOPPING");
@@ -540,6 +540,20 @@ namespace motion_planner
         //return menger_curvature * 10; //scaling the curvature value for velocity calculation.
     }
 
+    void MotionPlanner::initializeConfig()
+    {
+	    config.vmax = 1.0;
+	    config.vmin = 0.05;
+	    config.acc_x = 0.1;
+	    config.wmax = 0.5;
+	    config.wmin = 0.1;
+	    config.acc_w = 0.3;
+	    config.lat_acc = 1.5;
+	    config.obst_stop_dist = 2.0;
+	    config.cross_track_warn = 0.15;
+	    config.cross_track_error = 0.5;
+    }
+
     bool MotionPlanner::inPlace(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped& pose_b, const double xy_goal_tolerance, const double yaw_goal_tolerance, double& yaw_dif)
     {
         double path_a_yaw = tf2::getYaw(pose_a.pose.orientation);
@@ -680,6 +694,20 @@ namespace motion_planner
             return false;
         }
         return true;
+    }
+    void MotionPlanner::updateConfig(struct MotionPlannerConfig& latest_config)
+    {
+	auto limits = planner_util_->getCurrentLimits();
+        config.vmax = limits.max_vel_x;
+	config.vmin = limits.min_vel_x;
+	config.acc_x = limits.acc_lim_x;
+	config.wmax = limits.max_rot_vel;
+	config.wmin = limits.min_rot_vel;
+	config.acc_w = limits.acc_lim_theta;
+	config.lat_acc = latest_config.lat_acc;
+	config.obst_stop_dist = latest_config.obst_stop_dist;
+	config.cross_track_warn = latest_config.cross_track_warn;
+	config.cross_track_error = latest_config.cross_track_error;
     }
 };
 

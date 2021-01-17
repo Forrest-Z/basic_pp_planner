@@ -33,7 +33,16 @@ namespace pp_local_planner {
         pp_config.max_lookahead = config.max_lookahead;
         pp_config.kla = config.kla;
         pp_config.kct = config.kct;
-        pp_config.limits_ = planner_util_->getCurrentLimits();
+	pp_config.lat_acc = config.lat_acc;
+	pp_config.obst_stop_dist = config.safety_distance;
+	pp_config.cross_track_warn = config.cross_track_warn;
+	pp_config.cross_track_error = config.cross_track_error;
+	pp_config.update_config = config.change_config;
+        //pp_config.limits_ = planner_util_->getCurrentLimits();
+	if(pp_config.update_config)
+	{
+		mplnr->updateConfig(pp_config);
+	}
     }
 
     PPLocalPlanner::PPLocalPlanner(std::string name, tf::TransformListener* tf, base_local_planner::LocalPlannerUtil

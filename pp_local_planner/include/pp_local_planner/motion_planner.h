@@ -13,6 +13,7 @@
 #define MOTION_PLANNER_H 
 
 #include "motion_planner_data.h"
+#include "pp_local_planner/motion_planner_config.h"
 
 #include<cmath>
 
@@ -141,12 +142,16 @@ namespace motion_planner
              *@return magnitude path curvature.
              */
             double pathCurvature(const mpd::MengerPoints& path_points);
+
+	    void initializeConfig();
             
             bool trajectoryCollision(double linear_vel, double angular_vel, double frequency,
             const std::vector<geometry_msgs::Point>& footprint_spec, const geometry_msgs::PoseStamped& robot_pose);
             
             bool transformPose(const std::string& global_frame, const
                     geometry_msgs::PoseStamped &pose, geometry_msgs::PoseStamped& transformed_pose);
+	    
+	    void updateConfig(struct MotionPlannerConfig& latest_config);
         
         private:
 
@@ -186,6 +191,7 @@ namespace motion_planner
                     footprint_spec, mpd::ObstacleInfo& obstacle_info);
 
             bool updateMBPlan();
+
             
 
             tf::TransformListener* tf_;
@@ -194,6 +200,7 @@ namespace motion_planner
             costmap_2d::Costmap2D* costmap;
             mpd::Plan global_plan_;
             mpd::Plan mb_global_plan_;
+	    MotionPlannerConfig config;
             geometry_msgs::PoseStamped start_pose_;
             geometry_msgs::PoseStamped end_pose_;
             geometry_msgs::PoseStamped ref_pose_;

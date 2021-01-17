@@ -50,6 +50,14 @@ namespace mpd
         bool error;
     };
 
+    struct MotionPlannerConfig
+    {
+	double obst_stop_dist;
+	double cross_track_warn;
+	double cross_track_error;
+	double lateral_acc;
+    };
+
     typedef std::vector<geometry_msgs::PoseStamped> Plan;
     typedef std::vector<MotionPose> MotionPlan;
     typedef std::vector<geometry_msgs::Twist> VelocityPlan;

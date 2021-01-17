@@ -16,6 +16,8 @@
 #include <Eigen/Core>
 
 #include "motion_planner.h"
+#include "pp_local_planner/motion_planner.h"
+#include "pp_local_planner/motion_planner_config.h"
 #include "pp_local_planner/motion_target_follower.h"
 
 #include <pp_local_planner/PPLocalPlannerConfig.h>
@@ -135,6 +137,11 @@ namespace pp_local_planner {
                 double max_lookahead;
                 double kla;
                 double kct;
+		double lat_acc;
+		double obst_stop_dist;
+		double cross_track_warn;
+		double cross_track_error;
+		bool update_config;
                 planner_limits limits_;
             };
 
@@ -197,7 +204,7 @@ namespace pp_local_planner {
                     geometry_msgs::PoseStamped end_pose_;
             };
 
-            PurepursuitConfig pp_config;
+            struct MotionPlannerConfig pp_config;
             PurepursuitDebug* pp_debug;
 
 
