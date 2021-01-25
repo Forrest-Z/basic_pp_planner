@@ -45,22 +45,22 @@
 #include <nav_msgs/Path.h>
 
 namespace pp_local_planner {
-    
+
     /*double operator*(const geometry_msgs::PoseStamped& pose1, const geometry_msgs::PoseStamped& pose2)
-    {
-        return (sqrt(pose1.pose.position.x * pose2.pose.position.x + pose1.pose.position.y * pose2.pose.position.y));
-    }*/
-    
-   /* struct PoseCompare
-    {
-        bool operator ()(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped pose_b)
-        {
-            return (pose_a.pose.position.x == pose_b.pose.position.x && pose_a.pose.position.y == pose_b.pose.position.y
-            && pose_a.pose.position.z == pose_b.pose.position.z && pose_a.pose.orientation.x == pose_b.pose.orientation.y ==
-            pose_b.pose.orientation.y && pose_a.pose.orientation.w == pose_b.pose.orientation.w && pose_a.pose.orientation.z
-            == pose_b.pose.orientation.z);
-        }
-    };*/
+      {
+      return (sqrt(pose1.pose.position.x * pose2.pose.position.x + pose1.pose.position.y * pose2.pose.position.y));
+      }*/
+
+    /* struct PoseCompare
+       {
+       bool operator ()(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped pose_b)
+       {
+       return (pose_a.pose.position.x == pose_b.pose.position.x && pose_a.pose.position.y == pose_b.pose.position.y
+       && pose_a.pose.position.z == pose_b.pose.position.z && pose_a.pose.orientation.x == pose_b.pose.orientation.y ==
+       pose_b.pose.orientation.y && pose_a.pose.orientation.w == pose_b.pose.orientation.w && pose_a.pose.orientation.z
+       == pose_b.pose.orientation.z);
+       }
+       };*/
     /**
      * @class PPLocalPlanner
      * @brief A class implementing a local planner using the purepursuit approach. 
@@ -74,7 +74,7 @@ namespace pp_local_planner {
              * @param global_frame the frame id of the tf frame to use
              */
             PPLocalPlanner(std::string name, tf::TransformListener* tf, base_local_planner::LocalPlannerUtil *planner_util, std::string
-            motion_frame);
+                    motion_frame);
 
             ~PPLocalPlanner();
 
@@ -102,19 +102,19 @@ namespace pp_local_planner {
             double checkFootprintCost(double x, double y, double theta, std::vector<geometry_msgs::Point> footprint_spec);
             double calculateDynamicLookahead(const geometry_msgs::Twist& robot_vel);
             bool computeLinearVelocity(std::vector<geometry_msgs::PoseStamped>& transformed_plan, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, const
-            geometry_msgs::PoseStamped& global_pose, mpd::MotionPlan& mpl, geometry_msgs::Twist& base_command);
+                    geometry_msgs::PoseStamped& global_pose, mpd::MotionPlan& mpl, geometry_msgs::Twist& base_command);
             bool computeAngularVelocity(const tf::TransformListener* tf , const geometry_msgs::PoseStamped&
-            lookahead_pose, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel,
-            double& linear_vel, double& angular_vel);
+                    lookahead_pose, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel,
+                    double& linear_vel, double& angular_vel);
             bool getLookaheadPoint(const tf::TransformListener* tf, std::vector<geometry_msgs::PoseStamped>&
-            transformed_plan, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel,
-            geometry_msgs::PoseStamped& lookahead_pose);
+                    transformed_plan, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel,
+                    geometry_msgs::PoseStamped& lookahead_pose);
             bool makeVelocityPlan(const std::vector<geometry_msgs::PoseStamped>& transformed_plan, const
-            std::vector<geometry_msgs::Point>& footprint_spec, const geometry_msgs::Twist& robot_vel); 
+                    std::vector<geometry_msgs::Point>& footprint_spec, const geometry_msgs::Twist& robot_vel); 
             inline double euclidean(const geometry_msgs::PoseStamped& pose1, const geometry_msgs::PoseStamped& pose2)
             {
                 return (sqrt(pow(pose1.pose.position.x - pose2.pose.position.x, 2) + pow(pose1.pose.position.y -
-                pose2.pose.position.y, 2)));
+                                pose2.pose.position.y, 2)));
             }
             boost::mutex configuration_mutex_;
             tf::TransformListener* tf_; 
@@ -124,12 +124,12 @@ namespace pp_local_planner {
             std::string frame_id_;
             std::string motion_frame_;
             bool publish_traj;
-            
+
             //object to get local planner limit parameters 
             typedef base_local_planner::LocalPlannerLimits planner_limits; 
-            
+
             motion_target_follower::MotionTargetFollower* mtf;
-            
+
             //structure containing purepursuit configurations.
             struct PurepursuitConfig
             {
@@ -137,11 +137,11 @@ namespace pp_local_planner {
                 double max_lookahead;
                 double kla;
                 double kct;
-		double lat_acc;
-		double obst_stop_dist;
-		double cross_track_warn;
-		double cross_track_error;
-		bool update_config;
+                double lat_acc;
+                double obst_stop_dist;
+                double cross_track_warn;
+                double cross_track_error;
+                bool update_config;
                 planner_limits limits_;
             };
 
@@ -154,7 +154,7 @@ namespace pp_local_planner {
                     this->start_debug_pub = this->nh_debug.advertise<geometry_msgs::PoseStamped>("/start_pose", 1);
                     this->end_debug_pub = this->nh_debug.advertise<geometry_msgs::PoseStamped>("/end_pose", 1);
                 }
-               
+
                 /*
                  * @brief method to update infos to publish
                  * @param dynamic lookahead information.
@@ -192,24 +192,23 @@ namespace pp_local_planner {
                 }
 
                 private:
-                    ros::NodeHandle nh_debug;
-                    ros::Publisher pose_debug_pub; 
-                    ros::Publisher start_debug_pub; 
-                    ros::Publisher end_debug_pub; 
-                    double dynamic_lookahead;
-                    double lateral_shift;
-                    double curvature;
-                    geometry_msgs::PoseStamped lookahead_pose;
-                    geometry_msgs::PoseStamped start_pose_;
-                    geometry_msgs::PoseStamped end_pose_;
+                ros::NodeHandle nh_debug;
+                ros::Publisher pose_debug_pub; 
+                ros::Publisher start_debug_pub; 
+                ros::Publisher end_debug_pub; 
+                double dynamic_lookahead;
+                double lateral_shift;
+                double curvature;
+                geometry_msgs::PoseStamped lookahead_pose;
+                geometry_msgs::PoseStamped start_pose_;
+                geometry_msgs::PoseStamped end_pose_;
             };
 
             struct MotionPlannerConfig pp_config;
             PurepursuitDebug* pp_debug;
 
-
     };
 
-    
+
 };
 #endif

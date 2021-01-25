@@ -70,7 +70,9 @@ namespace motion_planner
         //double min_stop_dist = pow(robot_vel.linear.x,2) / (2 * max_acc);
         double min_stop_dist = pow(vmax, 2) / (2 * max_acc);
         //increasing the window size with an extra safety distance.
-        double safe_distance = min_stop_dist  + safe_factor_; //safe factor should be less than half of local costmap.
+        //double safe_distance = min_stop_dist  + safe_factor_; //safe factor should be less than half of local costmap.
+        double safe_distance = min_stop_dist  + config.obst_stop_dist; //safe factor should be less than half of local costmap.
+        //ROS_WARN("SAFE_DISTANCE %f", safe_distance);
         double arc_length = 0.0;
 
         geometry_msgs::PoseStamped pose_ = plan.at(0);
@@ -126,10 +128,9 @@ namespace motion_planner
                 mp.error = false;
                 //if obstacle detected, trim out the motion plan to stop the robot at a safe distance from the robot.
                 double obst_stop_dist = config.obst_stop_dist;
-
-                if(arc_length >= obst_stop_dist) 
+                double tolerance = 0.5;
+                if(arc_length >= obst_stop_dist + tolerance) 
                 {
-                    //trimMotionPlan(motion_plan, min_stop_dist + (safe_distance - (obst_stop_dist + min_stop_dist)));
                     trimMotionPlan(motion_plan, min_stop_dist );
                     motion_plan.back().twist_ref.linear.x = 0.0;
                     motion_plan.back().twist_ref.linear.y = 0.0;

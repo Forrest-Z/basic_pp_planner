@@ -33,16 +33,16 @@ namespace pp_local_planner {
         pp_config.max_lookahead = config.max_lookahead;
         pp_config.kla = config.kla;
         pp_config.kct = config.kct;
-	pp_config.lat_acc = config.lat_acc;
-	pp_config.obst_stop_dist = config.safety_distance;
-	pp_config.cross_track_warn = config.cross_track_warn;
-	pp_config.cross_track_error = config.cross_track_error;
-	pp_config.update_config = config.change_config;
+        pp_config.lat_acc = config.lat_acc;
+        pp_config.obst_stop_dist = config.safety_distance;
+        pp_config.cross_track_warn = config.cross_track_warn;
+        pp_config.cross_track_error = config.cross_track_error;
+        pp_config.update_config = config.change_config;
         //pp_config.limits_ = planner_util_->getCurrentLimits();
-	if(pp_config.update_config)
-	{
-		mplnr->updateConfig(pp_config);
-	}
+        if(pp_config.update_config)
+        {
+            mplnr->updateConfig(pp_config);
+        }
     }
 
     PPLocalPlanner::PPLocalPlanner(std::string name, tf::TransformListener* tf, base_local_planner::LocalPlannerUtil
@@ -63,8 +63,8 @@ namespace pp_local_planner {
 
         pp_debug = new PurepursuitDebug;
 
-        mplnr = new motion_planner::MotionPlanner(tf_, planner_util_, 3.0, motion_frame_);
-        
+        mplnr = new motion_planner::MotionPlanner(tf_, planner_util_, 2.0, motion_frame_);
+
         mtf = new motion_target_follower::MotionTargetFollower(0.0, 1.0, 0.4, 2.0);
 
     }
@@ -124,7 +124,7 @@ namespace pp_local_planner {
             cmd_vel.linear.x = base_command.linear.x;
             cmd_vel.linear.y = 0.0;
             cmd_vel.angular.z = angular_vel;
-           
+
         }
         if(mplnr->trajectoryCollision(robot_vel.linear.x, cmd_vel.angular.z, 5.0, footprint_spec, global_pose))
         {
@@ -160,7 +160,7 @@ namespace pp_local_planner {
         //bounding angular velocity values below the limits.
         //pp_config.max_angular
         pp_debug->updateDebug(dynamic_lookahead, lateral_shift, curvature);*/
-       
+
         auto limits = planner_util_->getCurrentLimits();
         mtf->updateControlLimits(limits.max_vel_x, limits.min_vel_x, limits.max_rot_vel, limits.min_rot_vel);
         geometry_msgs::PoseStamped lookahead_pose_base;
@@ -169,8 +169,8 @@ namespace pp_local_planner {
         mplnr->transformPose("mag250_tf/base_link", lookahead_pose_global, lookahead_pose_base);
         double linear_velocity = robot_vel.linear.x;
         mtf->getControlCommands(lookahead_pose_base, linear_vel, angular_vel);
-        ROS_INFO("LINEAR VEL %f", linear_vel);
-        ROS_INFO("ANGULAR VEL %f", angular_vel);
+        //ROS_INFO("LINEAR VEL %f", linear_vel);
+        //ROS_INFO("ANGULAR VEL %f", angular_vel);
         return true;
     }
 
@@ -202,45 +202,45 @@ namespace pp_local_planner {
         //in this case first point is selected point then applying std::prev() was giving error
         //now plan is started from the second point.
         for(plan_it = transformed_plan.begin() + 1; plan_it != transformed_plan.end() -1; plan_it++)
+        {
+            if(mp.getPlaneDistance(global_pose, *plan_it) >= dynamic_lookahead)
             {
-                if(mp.getPlaneDistance(global_pose, *plan_it) >= dynamic_lookahead)
+                geometry_msgs::PoseStamped start = *(std::prev(plan_it, 1));
+                geometry_msgs::PoseStamped end = *(plan_it);
+                double scale = dynamic_lookahead - mp.getPlaneDistance(global_pose, start); 
+                if (mp.linInterpolatedPose(start, end, global_pose, scale, lookahead_pose))
                 {
-                    geometry_msgs::PoseStamped start = *(std::prev(plan_it, 1));
-                    geometry_msgs::PoseStamped end = *(plan_it);
-                    double scale = dynamic_lookahead - mp.getPlaneDistance(global_pose, start); 
-                    if (mp.linInterpolatedPose(start, end, global_pose, scale, lookahead_pose))
-                    {
-                        pp_debug->updateDebug(lookahead_pose);
-                        prev_ldp = lookahead_pose;
-                        return true;
-                    }
-                    else
-                    {
-                        ROS_ERROR("LOOKAHEAD CALCULATION FAILED");
-                        return false;
-                    }
+                    pp_debug->updateDebug(lookahead_pose);
+                    prev_ldp = lookahead_pose;
+                    return true;
                 }
-            } 
-            lookahead_pose = transformed_plan.at(transformed_plan.size() - 1);
-            return true;
-            /*mpd::PosePair plan_extend_pair;
-            plan_extend_pair = mp.getPlanExtendPosePair(transformed_plan);
-            geometry_msgs::PoseStamped end = plan_extend_pair.second;
-            geometry_msgs::PoseStamped start = plan_extend_pair.first;
-            pp_debug->updateLineExtendDebug(start, end);
-            double scale = dynamic_lookahead - mp.getPlaneDistance(global_pose, end); 
-            if (mp.linInterpolatedPose(start, end, global_pose, scale, lookahead_pose))
-            {
-                pp_debug->updateDebug(lookahead_pose);
-                prev_ldp = lookahead_pose;
-                return true;
+                else
+                {
+                    ROS_ERROR("LOOKAHEAD CALCULATION FAILED");
+                    return false;
+                }
             }
-            else
-            {
-                ROS_ERROR("LOOKAHEAD CALCULATION FAILED");
-                return false;
-            }*/
-        }
+        } 
+        lookahead_pose = transformed_plan.at(transformed_plan.size() - 1);
+        return true;
+        /*mpd::PosePair plan_extend_pair;
+          plan_extend_pair = mp.getPlanExtendPosePair(transformed_plan);
+          geometry_msgs::PoseStamped end = plan_extend_pair.second;
+          geometry_msgs::PoseStamped start = plan_extend_pair.first;
+          pp_debug->updateLineExtendDebug(start, end);
+          double scale = dynamic_lookahead - mp.getPlaneDistance(global_pose, end); 
+          if (mp.linInterpolatedPose(start, end, global_pose, scale, lookahead_pose))
+          {
+          pp_debug->updateDebug(lookahead_pose);
+          prev_ldp = lookahead_pose;
+          return true;
+          }
+          else
+          {
+          ROS_ERROR("LOOKAHEAD CALCULATION FAILED");
+          return false;
+          }*/
+    }
 
     double PPLocalPlanner::calculateDynamicLookahead(const geometry_msgs::Twist& robot_vel)
     {
