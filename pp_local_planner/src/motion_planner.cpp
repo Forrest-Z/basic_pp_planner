@@ -128,10 +128,9 @@ namespace motion_planner
                 mp.error = false;
                 //if obstacle detected, trim out the motion plan to stop the robot at a safe distance from the robot.
                 double obst_stop_dist = config.obst_stop_dist;
-                double tolerance = 0.5;
-                if(arc_length >= obst_stop_dist + tolerance) 
+                if(arc_length >= obst_stop_dist) 
                 {
-                    trimMotionPlan(motion_plan, min_stop_dist );
+                    trimMotionPlan(motion_plan, min_stop_dist);
                     motion_plan.back().twist_ref.linear.x = 0.0;
                     motion_plan.back().twist_ref.linear.y = 0.0;
                 }
@@ -209,6 +208,7 @@ namespace motion_planner
                         motion_plan.push_back(mp);
                     }
                 }
+                    trimMotionPlan(motion_plan, min_stop_dist);
             }
         }
         //fix for proper lookahead on track before an inplace.
@@ -281,24 +281,23 @@ namespace motion_planner
         {
             short_dis_to_line = getDisFromPointToLine(global_pose, a, b, c);
         }
-
         double min_stop_dist = pow(config.vmax, 2) / (2 * config.acc_x) ;//+ mpd::euclidean(ramp_plan.begin(), closest_pose_it->pose)
 
-        std::vector<mpd::MotionPose>::iterator vel_point_it;
+        /*std::vector<mpd::MotionPose>::iterator vel_point_it;
         for(vel_point_it = ramp_plan.begin() + (closest_pose_it - ramp_plan.begin()); vel_point_it != ramp_plan.end(); vel_point_it++)
         {
             if(mpd::euclidean(global_pose, vel_point_it->pose) >= min_stop_dist)
             {
                 break;
             }
-        }
+        }*/
 
-        auto min_vel_mp = std::min_element(ramp_plan.begin(), vel_point_it, [](const mpd::MotionPose& mp1, const
-                    mpd::MotionPose& mp2) {return mp1.twist_ref.linear.x <= mp2.twist_ref.linear.x;});
+        auto min_vel_mp = std::min_element(ramp_plan.begin(), ramp_plan.end(), [](const mpd::MotionPose& mp1, const mpd::MotionPose& mp2) {return mp1.twist_ref.linear.x <= mp2.twist_ref.linear.x;});
+        
 
         double euclid_to_minpose = mpd::euclidean(global_pose, min_vel_mp->pose);
         ref_pose_ = min_vel_mp->pose;
-        ref_pose_pub.publish(ref_pose_);
+        //ref_pose_pub.publish(ref_pose_);
 
         mpd::MotionPose inplace_mp = ramp_plan.at(0);
 
@@ -348,6 +347,7 @@ namespace motion_planner
                 plan_executed = true; //once reached goal then not issue any velocity until new plan.
             }
             cmd_vel.linear.x = std::min(config.vmax, std::max(final_vel_x, min_vel_mp->twist_ref.linear.x));
+
             if(std::isnan(cmd_vel.linear.x))
             {
                 ROS_ERROR("CRITICAL ERROR STOPPING");
@@ -356,7 +356,7 @@ namespace motion_planner
             cmd_vel.angular.z = 0.0;
             //ROS_INFO("REF VEL : %f", min_vel_mp->twist_ref.linear.x);
             clearVisitedPlan(closest_pose_it - ramp_plan.begin()); 
-            closest_pose_pub.publish(closest_pose_it->pose);
+            //closest_pose_pub.publish(closest_pose_it->pose);
             //ref_pose_pub.publish(min_vel_mp->pose);
             return true; 
 

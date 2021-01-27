@@ -187,11 +187,18 @@ namespace pp_local_planner {
 
     bool PPLocalPlanner::getLookaheadPoint(const tf::TransformListener* tf, std::vector<geometry_msgs::PoseStamped>& transformed_plan, const geometry_msgs::PoseStamped& global_pose, const geometry_msgs::Twist& robot_vel, geometry_msgs::PoseStamped& lookahead_pose)
     {
-        if(transformed_plan.size() < 4)
+        if(transformed_plan.size() < 1)
         {
             ROS_ERROR("NO PLAN TO TRAVEL : ERROR");
             return false;
         }
+
+        if(transformed_plan.size() >= 1 && transformed_plan.size() < 4)
+        {
+            lookahead_pose = transformed_plan.at(transformed_plan.size() - 1);
+            return true;
+        }
+
         std::vector<geometry_msgs::PoseStamped>::const_iterator plan_it;
         geometry_msgs::PoseStamped prev_ldp;
         motion_planner::MotionPlanner mp;
