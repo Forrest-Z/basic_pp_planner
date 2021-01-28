@@ -14,7 +14,11 @@
 
 #include "motion_planner_data.h"
 #include "pp_local_planner/motion_planner_config.h"
+#include "ros/service_server.h"
+#include "std_srvs/SetBoolRequest.h"
+#include "std_srvs/SetBoolResponse.h"
 
+#include <boost/thread/pthread/recursive_mutex.hpp>
 #include<cmath>
 
 //STL includes
@@ -28,6 +32,8 @@
 #include <base_local_planner/local_planner_util.h>
 #include <base_local_planner/local_planner_limits.h>
 #include <base_local_planner/costmap_model.h>
+
+#include <std_srvs/SetBool.h>
 
 //tf include
 #include <tf2/utils.h>
@@ -175,6 +181,8 @@ namespace motion_planner
              *@param maximum allowed arc length of the plan.
              */
             void trimMotionPlan(mpd::MotionPlan& motion_plan, double safe_arc_length);
+
+            void profileVelocity(const double& ref_vel, double& profiled_vel);
             
 
             void clearVisitedPlan(const mpd::Plan::const_iterator upto_it);
@@ -192,26 +200,31 @@ namespace motion_planner
 
             bool updateMBPlan();
 
+            bool warningFieldCb(std_srvs::SetBoolRequest& field_status, std_srvs::SetBoolResponse& response);
+
             
 
             tf::TransformListener* tf_;
             base_local_planner::LocalPlannerUtil* planner_util_;
             base_local_planner::WorldModel* world_model;
+            boost::recursive_mutex warning_field_mutex;
             costmap_2d::Costmap2D* costmap;
             mpd::Plan global_plan_;
             mpd::Plan mb_global_plan_;
-	    MotionPlannerConfig config;
+	        MotionPlannerConfig config;
             geometry_msgs::PoseStamped start_pose_;
             geometry_msgs::PoseStamped end_pose_;
             geometry_msgs::PoseStamped ref_pose_;
             ros::Publisher ref_pose_pub;
             ros::Publisher closest_pose_pub;
+            ros::ServiceServer warning_field_server;
             std::string motion_frame_;
             double safe_factor_;
             bool accept_plan;
             bool debug;
             bool plan_executed;
             bool critical_error;
+            bool warning_field_status;
 
     };
 };

@@ -10,6 +10,8 @@
  *********************************************************************/
 
 #include "pp_local_planner/motion_planner.h"
+#include "std_srvs/SetBoolRequest.h"
+#include "std_srvs/SetBoolResponse.h"
 
 namespace motion_planner
 {
@@ -27,6 +29,7 @@ namespace motion_planner
         ros::NodeHandle nh;
         ref_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("ref_pose", 1);
         closest_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("closest_pose", 1);
+        warning_field_server = nh.advertiseService("warning_field_status", &MotionPlanner::warningFieldCb, this);
     }
     MotionPlanner::MotionPlanner(){}
 
@@ -89,6 +92,11 @@ namespace motion_planner
         critical_error = false;
 
         //vmax = (std::get<1>(ct) >= cross_track_control) ? limits.min_vel_x : limits.max_vel_x; //not working this mehtod.
+        
+        if(warning_field_status)
+        {
+            vmax = config.vmin;
+        }
 
         if(std::get<1>(ct) >= cross_track_stop)
         {
@@ -598,6 +606,10 @@ namespace motion_planner
         return (mpd::euclidean(check_pose, start_pose) < xy_goal_tolerance) ? true : false;
     }
 
+    void MotionPlanner::profileVelocity(const double& ref_vel, double& profiled_vel)
+    {
+    }
+
     bool MotionPlanner::setGlobalPlan(const mpd::Plan& orig_global_plan)
     {
         global_plan_ = orig_global_plan;
@@ -709,6 +721,13 @@ namespace motion_planner
 	config.obst_stop_dist = latest_config.obst_stop_dist;
 	config.cross_track_warn = latest_config.cross_track_warn;
 	config.cross_track_error = latest_config.cross_track_error;
+    }
+
+    bool MotionPlanner::warningFieldCb(std_srvs::SetBoolRequest& field_status, std_srvs::SetBoolResponse& response)
+    {
+        boost::recursive_mutex::scoped_lock pause_lock(warning_field_mutex);
+        warning_field_status = field_status.data;
+        return true; 
     }
 };
 
