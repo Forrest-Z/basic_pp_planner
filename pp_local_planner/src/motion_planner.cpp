@@ -26,6 +26,7 @@ namespace motion_planner
         costmap = planner_util_->getCostmap();
         world_model = new base_local_planner::CostmapModel(*costmap);
         debug = true;
+        warning_field_status = false;
         ros::NodeHandle nh;
         ref_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("ref_pose", 1);
         closest_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("closest_pose", 1);
