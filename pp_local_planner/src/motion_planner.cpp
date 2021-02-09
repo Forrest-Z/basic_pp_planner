@@ -569,7 +569,12 @@ namespace motion_planner
         double path_a_yaw = tf2::getYaw(pose_a.pose.orientation);
         double path_b_yaw = tf2::getYaw(pose_b.pose.orientation);
         yaw_dif = angles::shortest_angular_distance(path_a_yaw, path_b_yaw);
-        bool in_place = ((fabs(yaw_dif) > yaw_goal_tolerance)) ? true : false;
+        //bool in_place = ((fabs(yaw_dif) > yaw_goal_tolerance)) ? true : false;
+        
+        //to avoid oscillations when switching in_place points when yaw_goal tolerance is less.
+        //inplace checking tolerance kept a higher tolerance. 
+        //This will cause initial robot orientation is higher at tracking start.
+        bool in_place = ((fabs(yaw_dif) > 0.2)) ? true : false;
         return in_place;
     }
 
