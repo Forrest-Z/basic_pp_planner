@@ -116,7 +116,12 @@ namespace motion_planner
 
 
         //iterating over the global plan with in the safe window size to update velocity references.
-        for(plan_it = plan.begin(); plan_it != plan.end() - 1; plan_it++)
+        //changed iterating upto last point insted of second last point, to avoid referece point not
+        //reaching near goal and overshooting (on some mprim files which generate plan with more dista
+        //nce between two poses.
+        //here use of std::next(plan_it, 1) might bring unpredicted behaviour, in the inplace checking
+        //case.
+        for(plan_it = plan.begin(); plan_it != plan.end(); plan_it++)
         {
             //estimating the arc length. 
             arc_length += mpd::euclidean(*plan_it, pose_);
