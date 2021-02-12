@@ -574,6 +574,8 @@ namespace motion_planner
 	    config.obst_stop_dist = 2.0;
 	    config.cross_track_warn = 0.15;
 	    config.cross_track_error = 0.5;
+        config.xy_goal_tolerance = 0.05;
+        config.yaw_goal_tolerance = 0.05;
     }
 
     bool MotionPlanner::inPlace(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped& pose_b, const double xy_goal_tolerance, const double yaw_goal_tolerance, double& yaw_dif)
@@ -728,17 +730,20 @@ namespace motion_planner
     }
     void MotionPlanner::updateConfig(struct MotionPlannerConfig& latest_config)
     {
-	auto limits = planner_util_->getCurrentLimits();
+        boost::mutex::scoped_lock lock(config_mutex);
+	    auto limits = planner_util_->getCurrentLimits();
         config.vmax = limits.max_vel_x;
-	config.vmin = limits.min_vel_x;
-	config.acc_x = limits.acc_lim_x;
-	config.wmax = limits.max_rot_vel;
-	config.wmin = limits.min_rot_vel;
-	config.acc_w = limits.acc_lim_theta;
-	config.lat_acc = latest_config.lat_acc;
-	config.obst_stop_dist = latest_config.obst_stop_dist;
-	config.cross_track_warn = latest_config.cross_track_warn;
-	config.cross_track_error = latest_config.cross_track_error;
+	    config.vmin = limits.min_vel_x;
+	    config.acc_x = limits.acc_lim_x;
+	    config.wmax = limits.max_rot_vel;
+	    config.wmin = limits.min_rot_vel;
+	    config.acc_w = limits.acc_lim_theta;
+	    config.lat_acc = latest_config.lat_acc;
+	    config.obst_stop_dist = latest_config.obst_stop_dist;
+	    config.cross_track_warn = latest_config.cross_track_warn;
+	    config.cross_track_error = latest_config.cross_track_error;
+        config.xy_goal_tolerance = latest_config.xy_goal_tolerance;
+        config.yaw_goal_tolerance = latest_config.yaw_goal_tolerance;
     }
 
     bool MotionPlanner::warningFieldCb(std_srvs::SetBoolRequest& field_status, std_srvs::SetBoolResponse& response)

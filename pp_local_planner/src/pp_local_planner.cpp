@@ -37,6 +37,8 @@ namespace pp_local_planner {
         pp_config.obst_stop_dist = config.safety_distance;
         pp_config.cross_track_warn = config.cross_track_warn;
         pp_config.cross_track_error = config.cross_track_error;
+        pp_config.xy_goal_tolerance = config.xy_goal_tolerance;
+        pp_config.yaw_goal_tolerance = config.yaw_goal_tolerance;
         pp_config.update_config = config.change_config;
         //pp_config.limits_ = planner_util_->getCurrentLimits();
         if(pp_config.update_config)

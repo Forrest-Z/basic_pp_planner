@@ -18,6 +18,7 @@
 #include "std_srvs/SetBoolRequest.h"
 #include "std_srvs/SetBoolResponse.h"
 
+#include <boost/thread/pthread/mutex.hpp>
 #include <boost/thread/pthread/recursive_mutex.hpp>
 #include<cmath>
 
@@ -208,6 +209,7 @@ namespace motion_planner
             base_local_planner::LocalPlannerUtil* planner_util_;
             base_local_planner::WorldModel* world_model;
             boost::recursive_mutex warning_field_mutex;
+            boost::mutex config_mutex;
             costmap_2d::Costmap2D* costmap;
             mpd::Plan global_plan_;
             mpd::Plan mb_global_plan_;
