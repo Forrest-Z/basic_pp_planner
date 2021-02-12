@@ -187,8 +187,10 @@ namespace motion_planner
                 int pose_count = 0;
                 geometry_msgs::PoseStamped temp_pose = getInplacePose(plan, plan_it, pose_count);
                 //ref_pose_pub.publish(temp_pose);
-                if(inPlace(global_pose, temp_pose, limits.xy_goal_tolerance, limits.yaw_goal_tolerance,
-                            yaw_dif) && (mpd::euclidean(*plan_it, *std::next(plan_it, 1)) < 0.001))
+                //should improve logic to avoid std::next(plan_it, 1) < 0.001 check
+                //since we are iterating over entire plan. At plan end std::next(plan, 1) may create
+                //issues.
+                if(inPlace(global_pose, temp_pose, limits.xy_goal_tolerance, limits.yaw_goal_tolerance, yaw_dif) && (mpd::euclidean(*plan_it, *std::next(plan_it, 1)) < 0.001))
                 {
                     mp.pose = temp_pose;
                     mp.visited_count = pose_count;
@@ -232,9 +234,16 @@ namespace motion_planner
         return true;
     }
 
-    geometry_msgs::PoseStamped MotionPlanner::getInplacePose(const mpd::Plan& plan, mpd::Plan::const_iterator it, int&
-            pose_count)
+    geometry_msgs::PoseStamped MotionPlanner::getInplacePose(const mpd::Plan& plan, mpd::Plan::const_iterator it, int& pose_count)
     {
+        /*
+         * TODO
+         * avoid return uninitialized pose.
+         * restrict search upto safe distance than entire local plan, since both 
+         * are different.
+         * improve logic for this method to find a possible inplace turn ahead.
+         */
+
         geometry_msgs::PoseStamped in_place_pose;
         for(auto it_ = it; it_ != plan.end() - 1; it_++)
         {
@@ -245,11 +254,9 @@ namespace motion_planner
             else
             {
                 return in_place_pose; //change 1.
-                break;
             }
             pose_count = it_ - it;
         }
-        //ROS_WARN("SOMETHING WRONG IN INPLACE POSE CALCULATION");
     }
 
     bool MotionPlanner::getInstantaneousCommand(mpd::MotionPlan& ramp_plan, const geometry_msgs::PoseStamped&
