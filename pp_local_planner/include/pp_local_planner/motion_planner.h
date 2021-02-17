@@ -12,6 +12,7 @@
 #ifndef MOTION_PLANNER_H 
 #define MOTION_PLANNER_H 
 
+#include "geometry_msgs/PoseStamped.h"
 #include "motion_planner_data.h"
 #include "pp_local_planner/motion_planner_config.h"
 #include "ros/service_server.h"
@@ -190,6 +191,7 @@ namespace motion_planner
             
             void clearVisitedPlan(int size);
 
+            double getGoalDistance(const geometry_msgs::PoseStamped& robot_pose);
 
             /*
              *@brief method to update information about the obstacle present in the robot path. 
@@ -222,6 +224,10 @@ namespace motion_planner
             ros::ServiceServer warning_field_server;
             std::string motion_frame_;
             double safe_factor_;
+            double xy_goal_tolerance_;
+            double yaw_goal_tolerance_;
+            double max_xy_tolerance;
+            double max_yaw_goal_tolerance;
             bool accept_plan;
             bool debug;
             bool plan_executed;

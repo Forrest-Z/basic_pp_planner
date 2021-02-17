@@ -70,6 +70,7 @@ namespace motion_planner
         double vmin = config.vmin;
         double max_acc = config.acc_x; 
         double lateral_acc = config.lat_acc; //need to be parameterised.
+        xy_goal_tolerance_ = config.xy_goal_tolerance;
         //min distance required for the robot to stop based on the robot base parameters.
         //double min_stop_dist = pow(robot_vel.linear.x,2) / (2 * max_acc);
         double min_stop_dist = pow(vmax, 2) / (2 * max_acc);
@@ -114,6 +115,12 @@ namespace motion_planner
             ROS_WARN("CROSS TRACK ERROR WARN REDUCING SPEED");
         }
 
+        //position goal tolerance increasing on cross_track_warn and also robot reaches the
+        //goal position with the configured tolerance.
+        if(std::get<1>(ct) >= cross_track_warn || getGoalDistance(global_pose) < xy_goal_tolerance_)
+        {
+            xy_goal_tolerance_ = max_xy_tolerance;
+        }
 
         //iterating over the global plan with in the safe window size to update velocity references.
         //changed iterating upto last point insted of second last point, to avoid referece point not
@@ -190,7 +197,7 @@ namespace motion_planner
                 //should improve logic to avoid std::next(plan_it, 1) < 0.001 check
                 //since we are iterating over entire plan. At plan end std::next(plan, 1) may create
                 //issues.
-                if(inPlace(global_pose, temp_pose, limits.xy_goal_tolerance, limits.yaw_goal_tolerance, yaw_dif) && (mpd::euclidean(*plan_it, *std::next(plan_it, 1)) < 0.001))
+                if(inPlace(global_pose, temp_pose, xy_goal_tolerance_, config.yaw_goal_tolerance, yaw_dif) && (mpd::euclidean(*plan_it, *std::next(plan_it, 1)) < 0.001))
                 {
                     mp.pose = temp_pose;
                     mp.visited_count = pose_count;
@@ -206,7 +213,7 @@ namespace motion_planner
                     mp.obstacle = false;
                     mp.in_place = false;
                     auto goal_point = plan.at(plan.size() - 1);
-                    if(isGoal(*plan_it, goal_point, limits.xy_goal_tolerance))
+                    if(isGoal(*plan_it, goal_point, xy_goal_tolerance_))
                     {
                         mp.twist_ref.linear.x = 0.0;
                         mp.twist_ref.angular.z = 0.0;
@@ -322,12 +329,12 @@ namespace motion_planner
 
         mpd::MotionPose inplace_mp = ramp_plan.at(0);
 
-        if(min_vel_mp->in_place && euclid_to_minpose < limits.xy_goal_tolerance)
+        if(min_vel_mp->in_place && euclid_to_minpose < xy_goal_tolerance_)
         {
             inplace_mp = *min_vel_mp;
         }
 
-        if(inplace_mp.in_place || position <= limits.xy_goal_tolerance)
+        if(inplace_mp.in_place || position <= xy_goal_tolerance_)
         {
             double angular_gain = config.acc_w;
             double goal_yaw = tf2::getYaw(goal_pose.pose.orientation);
@@ -336,11 +343,11 @@ namespace motion_planner
             //temp fix for in_place false at goal position
             //added an extra orientation accuracy check
             //generate angular velocity.
-            double angular_diff = (position <= limits.xy_goal_tolerance) ? yaw : inplace_mp.twist_ref.angular.z;
+            double angular_diff = (position <= xy_goal_tolerance_) ? yaw : inplace_mp.twist_ref.angular.z;
             int sign = mpd::sign(angular_diff);
             double angular_vel = (std::min(std::max(config.wmin, fabs(angular_diff)), config.wmax)) * sign * angular_gain;
-            angular_vel = (fabs(angular_diff) <= limits.yaw_goal_tolerance) ? 0.0 : angular_vel;
-            if(inplace_mp.twist_ref.angular.z <= limits.yaw_goal_tolerance && inplace_mp.in_place)
+            angular_vel = (fabs(angular_diff) <= config.yaw_goal_tolerance) ? 0.0 : angular_vel;
+            if(inplace_mp.twist_ref.angular.z <= config.yaw_goal_tolerance && inplace_mp.in_place)
             {
                 geometry_msgs::PoseStamped search_pose;
                 //clearVisitedPlan(ramp_plan.at(0).visited_count); 
@@ -362,7 +369,7 @@ namespace motion_planner
             trimMotionPlan(ramp_plan, min_vel_mp->arc_length );
 
             double final_vel_x = config.vmin;
-            if((position <= limits.xy_goal_tolerance || euclid_to_minpose <= 0.1) && !plan_executed)
+            if((position <= xy_goal_tolerance_ || euclid_to_minpose <= 0.1) && !plan_executed)
             {
                 final_vel_x = 0.0;
                 plan_executed = true; //once reached goal then not issue any velocity until new plan.
@@ -528,6 +535,14 @@ namespace motion_planner
 
     }
 
+    double MotionPlanner::getGoalDistance(const geometry_msgs::PoseStamped& robot_pose)
+    {
+        geometry_msgs::PoseStamped goal_pose;
+        tf::Stamped<tf::Pose> tf_goal_pose;
+        planner_util_->getGoal(tf_goal_pose);
+        poseStampedTFToMsg(tf_goal_pose, goal_pose);
+        return mpd::euclidean(goal_pose, robot_pose); 
+    }
 
     double MotionPlanner::getPlaneDistance(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped& pose_b)
     {
@@ -576,6 +591,8 @@ namespace motion_planner
 	    config.cross_track_error = 0.5;
         config.xy_goal_tolerance = 0.05;
         config.yaw_goal_tolerance = 0.05;
+        max_xy_tolerance = 0.2;
+        max_yaw_goal_tolerance = 0.2;
     }
 
     bool MotionPlanner::inPlace(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped& pose_b, const double xy_goal_tolerance, const double yaw_goal_tolerance, double& yaw_dif)
@@ -588,7 +605,7 @@ namespace motion_planner
         //to avoid oscillations when switching in_place points when yaw_goal tolerance is less.
         //inplace checking tolerance kept a higher tolerance. 
         //This will cause initial robot orientation is higher at tracking start.
-        bool in_place = ((fabs(yaw_dif) > 0.2)) ? true : false;
+        bool in_place = ((fabs(yaw_dif) > max_yaw_goal_tolerance)) ? true : false;
         return in_place;
     }
 
@@ -610,7 +627,7 @@ namespace motion_planner
         double goal_yaw = tf2::getYaw(goal_pose.pose.orientation);
         double robot_yaw = tf2::getYaw(robot_pose.pose.orientation);
         double angle = angles::shortest_angular_distance(robot_yaw, goal_yaw);
-        if((position <= limits.xy_goal_tolerance) && (fabs(angle) <= limits.yaw_goal_tolerance))
+        if((position <= xy_goal_tolerance_) && (fabs(angle) <= config.yaw_goal_tolerance))
         {
             ROS_INFO("GOAL");
             return true;
