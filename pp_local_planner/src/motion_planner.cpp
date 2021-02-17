@@ -30,6 +30,7 @@ namespace motion_planner
         ros::NodeHandle nh;
         ref_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("ref_pose", 1);
         closest_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("closest_pose", 1);
+        obstacle_info_pub = nh.advertise<std_msgs::Bool>("obstacle_info", 1);
         warning_field_server = nh.advertiseService("warning_field_status", &MotionPlanner::warningFieldCb, this);
     }
     MotionPlanner::MotionPlanner(){}
@@ -234,6 +235,11 @@ namespace motion_planner
                     trimMotionPlan(motion_plan, min_stop_dist);
             }
         }
+        //publishing obstacle information
+        std_msgs::Bool is_obstacle;
+        is_obstacle.data = motion_plan.back().obstacle;
+        obstacle_info_pub.publish(is_obstacle);
+
         //fix for proper lookahead on track before an inplace.
         //local plan limited upto obtacle/inplace/goal/safe_distance.
         //trimming part beyond the above scenarios of the local transformed plan.

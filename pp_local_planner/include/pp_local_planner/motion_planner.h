@@ -15,7 +15,7 @@
 #include "geometry_msgs/PoseStamped.h"
 #include "motion_planner_data.h"
 #include "pp_local_planner/motion_planner_config.h"
-#include "ros/service_server.h"
+#include <std_msgs/Bool.h>
 #include "std_srvs/SetBoolRequest.h"
 #include "std_srvs/SetBoolResponse.h"
 
@@ -221,6 +221,7 @@ namespace motion_planner
             geometry_msgs::PoseStamped ref_pose_;
             ros::Publisher ref_pose_pub;
             ros::Publisher closest_pose_pub;
+            ros::Publisher obstacle_info_pub;
             ros::ServiceServer warning_field_server;
             std::string motion_frame_;
             double safe_factor_;
