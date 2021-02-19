@@ -10,8 +10,6 @@
  *********************************************************************/
 
 #include "pp_local_planner/motion_planner.h"
-#include "std_srvs/SetBoolRequest.h"
-#include "std_srvs/SetBoolResponse.h"
 
 namespace motion_planner
 {
@@ -27,11 +25,13 @@ namespace motion_planner
         world_model = new base_local_planner::CostmapModel(*costmap);
         debug = true;
         warning_field_status = false;
+        pause_motion = false;
         ros::NodeHandle nh;
         ref_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("ref_pose", 1);
         closest_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("closest_pose", 1);
         obstacle_info_pub = nh.advertise<std_msgs::Bool>("obstacle_info", 1);
         warning_field_server = nh.advertiseService("warning_field_status", &MotionPlanner::warningFieldCb, this);
+        nav_pause_server = nh.advertiseService("nav_pause", &MotionPlanner::navPauseCb, this);
     }
     MotionPlanner::MotionPlanner(){}
 
@@ -81,6 +81,7 @@ namespace motion_planner
             ROS_ERROR("ROBOT HITS OBSTACLE");
             return false;
         }
+        
 
         base_local_planner::LocalPlannerLimits limits = planner_util_->getCurrentLimits();
         mpd::MotionPose mp;
@@ -260,6 +261,15 @@ namespace motion_planner
         is_obstacle.data = motion_plan.back().obstacle;
         obstacle_info_pub.publish(is_obstacle);
 
+        //pause the robot
+        if(pause_motion)
+        {
+           motion_plan.clear(); // clear plan to put no motion plan since motion needs to be paused.
+           mpd::MotionPose mp;
+           mp.pause = true;
+           motion_plan.push_back(mp);
+        }
+        
         //fix for proper lookahead on track before an inplace.
         //local plan limited upto obtacle/inplace/goal/safe_distance.
         //trimming part beyond the above scenarios of the local transformed plan.
@@ -796,6 +806,13 @@ namespace motion_planner
         boost::recursive_mutex::scoped_lock pause_lock(warning_field_mutex);
         warning_field_status = field_status.data;
         return true; 
+    }
+    
+    bool MotionPlanner::navPauseCb(std_srvs::SetBoolRequest& pause, std_srvs::SetBoolResponse& response)
+    {
+        boost::mutex::scoped_lock nav_pause_lock(nav_pause_mutex);
+        pause_motion = pause.data;
+        return true;
     }
 };
 

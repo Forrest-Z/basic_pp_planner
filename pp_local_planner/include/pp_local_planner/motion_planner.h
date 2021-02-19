@@ -206,6 +206,7 @@ namespace motion_planner
             bool updateMBPlan();
 
             bool warningFieldCb(std_srvs::SetBoolRequest& field_status, std_srvs::SetBoolResponse& response);
+            bool navPauseCb(std_srvs::SetBoolRequest& pause, std_srvs::SetBoolResponse& response);
 
             
 
@@ -214,6 +215,7 @@ namespace motion_planner
             base_local_planner::WorldModel* world_model;
             boost::recursive_mutex warning_field_mutex;
             boost::mutex config_mutex;
+            boost::mutex nav_pause_mutex;
             costmap_2d::Costmap2D* costmap;
             mpd::Plan global_plan_;
             mpd::Plan mb_global_plan_;
@@ -225,6 +227,7 @@ namespace motion_planner
             ros::Publisher closest_pose_pub;
             ros::Publisher obstacle_info_pub;
             ros::ServiceServer warning_field_server;
+            ros::ServiceServer nav_pause_server;
             std::string motion_frame_;
             double safe_factor_;
             double xy_goal_tolerance_;
@@ -238,6 +241,7 @@ namespace motion_planner
             bool plan_executed;
             bool critical_error;
             bool warning_field_status;
+            bool pause_motion;
 
     };
 };

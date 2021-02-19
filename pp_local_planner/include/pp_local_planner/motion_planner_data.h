@@ -48,6 +48,7 @@ namespace mpd
         bool obstacle;
         bool in_place;
         bool error;
+        bool pause;
     };
 
     struct MotionPlannerConfig
