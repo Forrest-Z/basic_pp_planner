@@ -37,6 +37,26 @@ namespace motion_planner
 
     MotionPlanner::~MotionPlanner(){}
 
+    void MotionPlanner::boundControlInput(double &v, double &w)
+    {
+        //bounding the w values based on the configuration only wmax is considered.
+        //considering wmin can create issue in tracking.
+        //w = (fabs(w) < config.wmin) ? 0.0 : mpd::sign(w) * std::min(config.wmax, fabs(w));
+        w = mpd::sign(w) * std::min(config.wmax, fabs(w));
+        double linear_acc = (v - last_control_v) / fabs(v - last_control_v) * config.acc_x;
+        double angular_acc = (w - last_control_w) / fabs(w - last_control_w) * config.acc_w;
+        double delta_v = linear_acc * 0.2; //assuming running at 5hz
+        double delta_w = angular_acc * 0.2;
+        //bounding and profiling the v based on configuration.
+        v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, last_control_v + delta_v)) : std::max(0.0, std::max(v, last_control_v + delta_v));
+        int sign = mpd::sign(last_control_w + delta_w);
+        //profiling w based on the configuration.
+        w = (angular_acc > 0.0) ?  std::min(w, last_control_w + delta_w) : std::max(w, last_control_w + delta_w);
+        last_control_v = v;
+        last_control_w = w;
+
+    }
+
     void MotionPlanner::clearVisitedPlan(const mpd::Plan::const_iterator upto_it)
     {
         global_plan_.erase(global_plan_.begin(), upto_it);
@@ -599,6 +619,8 @@ namespace motion_planner
         config.yaw_goal_tolerance = 0.05;
         max_xy_tolerance = 0.2;
         max_yaw_goal_tolerance = 0.2;
+        last_control_v = 0.0;
+        last_control_w = 0.0;
     }
 
     bool MotionPlanner::inPlace(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped& pose_b, const double xy_goal_tolerance, const double yaw_goal_tolerance, double& yaw_dif)

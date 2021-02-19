@@ -135,6 +135,8 @@ namespace pp_local_planner {
             cmd_vel.linear.y = 0.0;
             cmd_vel.angular.z = 0.0;
         }
+        //bound control inputs
+        mplnr->boundControlInput(cmd_vel.linear.x, cmd_vel.angular.z);
         pp_debug->publishDebug();
         return true;
     }

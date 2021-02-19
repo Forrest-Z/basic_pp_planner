@@ -75,6 +75,8 @@ namespace motion_planner
                     global_pose, const geometry_msgs::Twist& robot_vel, std::vector<geometry_msgs::Point>
                     footprint_spec, mpd::MotionPlan& motion_plan);
             
+            void boundControlInput(double& v, double& w);
+            
             double getDisFromPointToLine(const geometry_msgs::PoseStamped& pose, double a, double b, double c);
             
             void getGlobalPlan(mpd::Plan& global_plan);
@@ -185,7 +187,7 @@ namespace motion_planner
             void trimMotionPlan(mpd::MotionPlan& motion_plan, double safe_arc_length);
 
             void profileVelocity(const double& ref_vel, double& profiled_vel);
-            
+
 
             void clearVisitedPlan(const mpd::Plan::const_iterator upto_it);
             
@@ -229,6 +231,8 @@ namespace motion_planner
             double yaw_goal_tolerance_;
             double max_xy_tolerance;
             double max_yaw_goal_tolerance;
+            double last_control_v;
+            double last_control_w;
             bool accept_plan;
             bool debug;
             bool plan_executed;
