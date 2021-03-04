@@ -68,6 +68,7 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
             if (!isInitialized()) {
 
                 ros::NodeHandle private_nh("~/" + name);
+                ros::NodeHandle private_nh_("~/");
                 g_plan_pub_ = private_nh.advertise<nav_msgs::Path>("global_plan", 1);
                 l_plan_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
                 tf_ = tf;
@@ -82,7 +83,7 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
                 //create the actual planner that we'll use.. it'll configure itself from the parameter server
                 pp_  = boost::shared_ptr<PPLocalPlanner>(new PPLocalPlanner(name, tf_, &planner_util_, costmap_ros_->getGlobalFrameID()));
 
-                if( private_nh.getParam( "odom_topic", odom_topic_ ))
+                if( private_nh_.getParam( "odom_topic", odom_topic_ ))
                 {
                     odom_helper_.setOdomTopic( odom_topic_ );
                 }
