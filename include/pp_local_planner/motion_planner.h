@@ -208,6 +208,8 @@ namespace motion_planner
             bool warningFieldCb(std_srvs::SetBoolRequest& field_status, std_srvs::SetBoolResponse& response);
             bool navPauseCb(std_srvs::SetBoolRequest& pause, std_srvs::SetBoolResponse& response);
 
+            virtual void setLoadedState(bool isloaded) override;
+
             
 
             tf::TransformListener* tf_;
@@ -216,6 +218,7 @@ namespace motion_planner
             boost::recursive_mutex warning_field_mutex;
             boost::mutex config_mutex;
             boost::mutex nav_pause_mutex;
+            boost::mutex loaded_state_mutex;
             costmap_2d::Costmap2D* costmap;
             mpd::Plan global_plan_;
             mpd::Plan mb_global_plan_;
@@ -242,6 +245,7 @@ namespace motion_planner
             bool critical_error;
             bool warning_field_status;
             bool pause_motion;
+            bool loaded;
 
     };
 };

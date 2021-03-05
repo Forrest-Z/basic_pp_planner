@@ -81,8 +81,8 @@ namespace motion_planner
             ROS_ERROR("ROBOT HITS OBSTACLE");
             return false;
         }
-        
 
+        ROS_WARN("LOADED %d", loaded);
         base_local_planner::LocalPlannerLimits limits = planner_util_->getCurrentLimits();
         mpd::MotionPose mp;
         //getting the global plan.
@@ -814,5 +814,12 @@ namespace motion_planner
         pause_motion = pause.data;
         return true;
     }
+
+    void setLoadedState(bool isloaded)
+    {
+        boost::mutex::scoped_lock state_set_lock(loaded_state_mutex);
+        loaded = isloaded;
+    }
+
 };
 
