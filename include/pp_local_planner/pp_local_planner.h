@@ -82,6 +82,7 @@ namespace pp_local_planner {
              * @brief Reconfigures the trajectory planner
              */
             void reconfigure(PPLocalPlannerConfig &cfg);
+            void passLoadedState(bool isloaded);
 
             /**
              * sets new plan and resets state

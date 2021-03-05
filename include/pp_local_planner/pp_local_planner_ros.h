@@ -92,6 +92,12 @@ namespace pp_local_planner {
              */
             bool ppComputeVelocityCommands(const geometry_msgs::PoseStamped &global_pose, geometry_msgs::Twist& cmd_vel);
 
+            /**
+             * @brief override method to update 
+             * robot loaded state
+             */
+            void setLoadedState(bool isloaded);
+
         private:
             /**
              * @brief Callback to update the local planner's parameters based on dynamic reconfigure

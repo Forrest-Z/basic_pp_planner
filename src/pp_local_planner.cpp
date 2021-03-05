@@ -29,10 +29,17 @@ namespace pp_local_planner {
     void PPLocalPlanner::reconfigure(PPLocalPlannerConfig &config)
     {
         boost::mutex::scoped_lock l(configuration_mutex_);
+        pp_config.load_vmax = config.load_vmax; 
+        pp_config.noload_vmax = config.noload_vmax; 
+        pp_config.load_wmax = config.load_wmax; 
+        pp_config.noload_wmax = config.noload_wmax; 
+        pp_config.load_acc_x = config.load_acc_x; 
+        pp_config.noload_acc_x = config.noload_acc_x; 
+        pp_config.load_acc_w = config.load_acc_w; 
+        pp_config.noload_acc_w = config.noload_acc_w;
         pp_config.min_lookahead = config.min_lookahead;
         pp_config.max_lookahead = config.max_lookahead;
         pp_config.kla = config.kla;
-        pp_config.kct = config.kct;
         pp_config.lat_acc = config.lat_acc;
         pp_config.obst_stop_dist = config.safety_distance;
         pp_config.cross_track_warn = config.cross_track_warn;
@@ -77,6 +84,10 @@ namespace pp_local_planner {
         delete mplnr;
     }
 
+    void PPLocalPlanner::passLoadedState(bool isloaded)
+    {
+        mplnr->updateLoadedState(isloaded);   
+    }
 
     bool PPLocalPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan) {
         if(planner_util_->setPlan(orig_global_plan))

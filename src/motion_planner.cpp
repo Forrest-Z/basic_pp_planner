@@ -83,6 +83,7 @@ namespace motion_planner
         }
 
         ROS_WARN("LOADED %d", loaded);
+        
         base_local_planner::LocalPlannerLimits limits = planner_util_->getCurrentLimits();
         mpd::MotionPose mp;
         //getting the global plan.
@@ -615,12 +616,22 @@ namespace motion_planner
 
     void MotionPlanner::initializeConfig()
     {
-	    config.vmax = 1.0;
+	    config.vmax = 0.5;
+        config.load_vmax = 0.4;
+        config.noload_vmax = 0.7;
 	    config.vmin = 0.05;
-	    config.acc_x = 0.1;
+	    config.acc_x = 0.15;
+	    config.load_acc_x = 0.4;
+	    config.noload_acc_x = 0.15;
 	    config.wmax = 0.5;
+	    config.load_wmax = 0.3;
+	    config.noload_wmax = 0.5;
 	    config.wmin = 0.1;
 	    config.acc_w = 0.3;
+	    config.load_acc_w = 0.2;
+	    config.noload_acc_w = 0.3;
+        config.min_lookahead = 1.0;
+        config.max_lookahead = 3.0;
 	    config.lat_acc = 1.5;
 	    config.obst_stop_dist = 2.0;
 	    config.cross_track_warn = 0.15;
@@ -786,13 +797,15 @@ namespace motion_planner
     void MotionPlanner::updateConfig(struct MotionPlannerConfig& latest_config)
     {
         boost::mutex::scoped_lock lock(config_mutex);
-	    auto limits = planner_util_->getCurrentLimits();
-        config.vmax = limits.max_vel_x;
-	    config.vmin = limits.min_vel_x;
-	    config.acc_x = limits.acc_lim_x;
-	    config.wmax = limits.max_rot_vel;
-	    config.wmin = limits.min_rot_vel;
-	    config.acc_w = limits.acc_lim_theta;
+	    //auto limits = planner_util_->getCurrentLimits();
+        config.load_vmax = latest_config.load_vmax;
+        config.noload_vmax = latest_config.noload_vmax;
+        config.load_wmax = latest_config.load_wmax;
+        config.noload_wmax = latest_config.noload_wmax;
+	    config.load_acc_x = latest_config.load_acc_x;
+	    config.noload_acc_x = latest_config.noload_acc_x;
+	    config.load_acc_w = latest_config.load_acc_w;
+	    config.noload_acc_w = latest_config.noload_acc_w;
 	    config.lat_acc = latest_config.lat_acc;
 	    config.obst_stop_dist = latest_config.obst_stop_dist;
 	    config.cross_track_warn = latest_config.cross_track_warn;
@@ -815,10 +828,30 @@ namespace motion_planner
         return true;
     }
 
-    void setLoadedState(bool isloaded)
+    void MotionPlanner::updateLoadedState(bool isloaded)
     {
         boost::mutex::scoped_lock state_set_lock(loaded_state_mutex);
         loaded = isloaded;
+    }
+
+    void MotionPlanner::loadStateConfig(bool loaded_state)
+    {
+        if(loaded_state)
+        {
+            config.vmax = config.load_vmax;
+	        config.acc_x = config.load_acc_x;
+	        config.wmax = config.load_wmax;
+	        config.acc_w = config.load_acc_w;
+        }
+        else
+        {
+            config.vmax = config.noload_vmax;
+	        config.acc_x = config.noload_acc_x;
+	        config.wmax = config.noload_wmax;
+	        config.acc_w = config.noload_acc_w;
+
+        }
+
     }
 
 };

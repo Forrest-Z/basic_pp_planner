@@ -163,6 +163,8 @@ namespace motion_planner
 	    
 	    void updateConfig(struct MotionPlannerConfig& latest_config);
         
+        void updateLoadedState(bool isloaded);
+        
         private:
 
             /*
@@ -208,7 +210,8 @@ namespace motion_planner
             bool warningFieldCb(std_srvs::SetBoolRequest& field_status, std_srvs::SetBoolResponse& response);
             bool navPauseCb(std_srvs::SetBoolRequest& pause, std_srvs::SetBoolResponse& response);
 
-            virtual void setLoadedState(bool isloaded) override;
+            void loadStateConfig(bool loaded_state);
+
 
             
 

@@ -39,7 +39,7 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
             } 
 
             // update generic local planner params
-            base_local_planner::LocalPlannerLimits limits;
+            /*base_local_planner::LocalPlannerLimits limits;
             limits.max_vel_x = config.max_vel_x;
             limits.min_vel_x = config.min_vel_x;
             limits.max_vel_y = config.max_vel_y;
@@ -52,7 +52,7 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
             limits.xy_goal_tolerance = config.xy_goal_tolerance;
             limits.yaw_goal_tolerance = config.yaw_goal_tolerance;
             limits.prune_plan = config.prune_plan;
-            planner_util_.reconfigureCB(limits, config.restore_defaults);
+            planner_util_.reconfigureCB(limits, config.restore_defaults);*/
             pp_->reconfigure(config);
         }
 
@@ -219,6 +219,11 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
             {
                 return false;
             }
+        }
+
+        void PPLocalPlannerROS::setLoadedState(bool isloaded)
+        {
+           //pp_->passLoadedState(isloaded); 
         }
 
     };
