@@ -808,6 +808,8 @@ namespace motion_planner
 	    config.noload_acc_x = latest_config.noload_acc_x;
 	    config.load_acc_w = latest_config.load_acc_w;
 	    config.noload_acc_w = latest_config.noload_acc_w;
+        config.vmin = latest_config.vmin;
+        config.wmin = latest_config.wmin;
 	    config.lat_acc = latest_config.lat_acc;
 	    config.obst_stop_dist = latest_config.obst_stop_dist;
 	    config.cross_track_warn = latest_config.cross_track_warn;
@@ -844,7 +846,7 @@ namespace motion_planner
 	        config.acc_x = config.load_acc_x;
 	        config.wmax = config.load_wmax;
 	        config.acc_w = config.load_acc_w;
-            ROS_WARN("LOAD %f %f %f %f", config.vmax, config.wmax, config.vmin, config.acc_x);
+            //ROS_WARN("LOAD %f %f %f %f", config.vmax, config.wmax, config.vmin, config.acc_x);
         }
         else
         {
@@ -852,7 +854,7 @@ namespace motion_planner
 	        config.acc_x = config.noload_acc_x;
 	        config.wmax = config.noload_wmax;
 	        config.acc_w = config.noload_acc_w;
-            ROS_WARN("NOLOAD %f %f", config.vmax, config.wmax);
+            //ROS_WARN("NOLOAD %f %f", config.vmax, config.wmax);
 
         }
 
