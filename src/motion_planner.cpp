@@ -32,6 +32,7 @@ namespace motion_planner
         obstacle_info_pub = nh.advertise<std_msgs::Bool>("obstacle_info", 1);
         warning_field_server = nh.advertiseService("warning_field_status", &MotionPlanner::warningFieldCb, this);
         nav_pause_server = nh.advertiseService("nav_pause", &MotionPlanner::navPauseCb, this);
+        loaded = true;
     }
     MotionPlanner::MotionPlanner(){}
 
@@ -82,7 +83,7 @@ namespace motion_planner
             return false;
         }
 
-        ROS_WARN("LOADED %d", loaded);
+        loadStateConfig();
         
         base_local_planner::LocalPlannerLimits limits = planner_util_->getCurrentLimits();
         mpd::MotionPose mp;
@@ -616,11 +617,11 @@ namespace motion_planner
 
     void MotionPlanner::initializeConfig()
     {
-	    config.vmax = 0.5;
+	    config.vmax = 1.3;
         config.load_vmax = 0.4;
         config.noload_vmax = 0.7;
-	    config.vmin = 0.05;
-	    config.acc_x = 0.15;
+	    config.vmin = 0.15;
+	    config.acc_x = 0.6;
 	    config.load_acc_x = 0.4;
 	    config.noload_acc_x = 0.15;
 	    config.wmax = 0.5;
@@ -630,9 +631,10 @@ namespace motion_planner
 	    config.acc_w = 0.3;
 	    config.load_acc_w = 0.2;
 	    config.noload_acc_w = 0.3;
-        config.min_lookahead = 1.0;
+        config.min_lookahead = 0.7;
         config.max_lookahead = 3.0;
-	    config.lat_acc = 1.5;
+        config.kla = 1.0;
+	    config.lat_acc = 1.2;
 	    config.obst_stop_dist = 2.0;
 	    config.cross_track_warn = 0.15;
 	    config.cross_track_error = 0.5;
@@ -834,14 +836,15 @@ namespace motion_planner
         loaded = isloaded;
     }
 
-    void MotionPlanner::loadStateConfig(bool loaded_state)
+    void MotionPlanner::loadStateConfig()
     {
-        if(loaded_state)
+        if(loaded)
         {
             config.vmax = config.load_vmax;
 	        config.acc_x = config.load_acc_x;
 	        config.wmax = config.load_wmax;
 	        config.acc_w = config.load_acc_w;
+            ROS_WARN("LOAD %f %f %f %f", config.vmax, config.wmax, config.vmin, config.acc_x);
         }
         else
         {
@@ -849,6 +852,7 @@ namespace motion_planner
 	        config.acc_x = config.noload_acc_x;
 	        config.wmax = config.noload_wmax;
 	        config.acc_w = config.noload_acc_w;
+            ROS_WARN("NOLOAD %f %f", config.vmax, config.wmax);
 
         }
 

@@ -223,7 +223,7 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
 
         void PPLocalPlannerROS::setLoadedState(bool isloaded)
         {
-           //pp_->passLoadedState(isloaded); 
+           pp_->passLoadedState(isloaded); 
         }
 
     };

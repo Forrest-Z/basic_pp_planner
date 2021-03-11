@@ -125,6 +125,7 @@ namespace pp_local_planner {
             std::string frame_id_;
             std::string motion_frame_;
             bool publish_traj;
+            bool loaded;
 
             //object to get local planner limit parameters 
             typedef base_local_planner::LocalPlannerLimits planner_limits; 

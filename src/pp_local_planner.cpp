@@ -37,6 +37,8 @@ namespace pp_local_planner {
         pp_config.noload_acc_x = config.noload_acc_x; 
         pp_config.load_acc_w = config.load_acc_w; 
         pp_config.noload_acc_w = config.noload_acc_w;
+        pp_config.vmin = config.vmin;
+        pp_config.wmin = config.wmin;
         pp_config.min_lookahead = config.min_lookahead;
         pp_config.max_lookahead = config.max_lookahead;
         pp_config.kla = config.kla;
@@ -86,7 +88,8 @@ namespace pp_local_planner {
 
     void PPLocalPlanner::passLoadedState(bool isloaded)
     {
-        mplnr->updateLoadedState(isloaded);   
+        mplnr->updateLoadedState(isloaded);
+        loaded = isloaded;
     }
 
     bool PPLocalPlanner::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan) {
@@ -176,16 +179,18 @@ namespace pp_local_planner {
         //pp_config.max_angular
         pp_debug->updateDebug(dynamic_lookahead, lateral_shift, curvature);*/
 
-        auto limits = planner_util_->getCurrentLimits();
-        mtf->updateControlLimits(limits.max_vel_x, limits.min_vel_x, limits.max_rot_vel, limits.min_rot_vel);
+        //auto limits = planner_util_->getCurrentLimits();
+        //mtf->updateControlLimits(limits.max_vel_x, limits.min_vel_x, limits.max_rot_vel, limits.min_rot_vel);
+        double vmax = (loaded == true) ? pp_config.load_vmax : pp_config.noload_vmax;
+        double wmax = (loaded == true) ? pp_config.load_wmax : pp_config.noload_wmax;
+        mtf->updateControlLimits(vmax, pp_config.vmin, wmax, pp_config.wmin);
+
         geometry_msgs::PoseStamped lookahead_pose_base;
         //geometry_msgs::PoseStamped local_target_pose;
         //mplnr->getReferencePose(local_target_pose);
         mplnr->transformPose("mag250_tf/base_link", lookahead_pose_global, lookahead_pose_base);
         double linear_velocity = robot_vel.linear.x;
         mtf->getControlCommands(lookahead_pose_base, linear_vel, angular_vel);
-        //ROS_INFO("LINEAR VEL %f", linear_vel);
-        //ROS_INFO("ANGULAR VEL %f", angular_vel);
         return true;
     }
 
