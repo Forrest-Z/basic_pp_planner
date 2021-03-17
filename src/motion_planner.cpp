@@ -97,7 +97,8 @@ namespace motion_planner
         xy_goal_tolerance_ = config.xy_goal_tolerance;
         //min distance required for the robot to stop based on the robot base parameters.
         //double min_stop_dist = pow(robot_vel.linear.x,2) / (2 * max_acc);
-        double min_stop_dist = pow(vmax, 2) / (2 * max_acc);
+        double min_stop_dist = (pow(vmax, 2) - pow(vmin, 2)) / (2 * (max_acc / 2));
+        //ROS_INFO("MIN_STOP 1 %f", min_stop_dist);
         //increasing the window size with an extra safety distance.
         //double safe_distance = min_stop_dist  + safe_factor_; //safe factor should be less than half of local costmap.
         double safe_distance = min_stop_dist  + config.obst_stop_dist; //safe factor should be less than half of local costmap.
@@ -236,6 +237,7 @@ namespace motion_planner
                 {
                     mp.obstacle = false;
                     mp.in_place = false;
+                    mp.pause = false;
                     auto goal_point = plan.at(plan.size() - 1);
                     if(isGoal(*plan_it, goal_point, xy_goal_tolerance_))
                     {
@@ -347,7 +349,9 @@ namespace motion_planner
         {
             short_dis_to_line = getDisFromPointToLine(global_pose, a, b, c);
         }
+        //double min_stop_dist = pow(config.vmax, 2) / (2 * (config.acc_x / 2 )) ;//+ mpd::euclidean(ramp_plan.begin(), closest_pose_it->pose)
         double min_stop_dist = pow(config.vmax, 2) / (2 * config.acc_x) ;//+ mpd::euclidean(ramp_plan.begin(), closest_pose_it->pose)
+        //ROS_INFO("MIN_STOP 2 %f", min_stop_dist);
 
         /*std::vector<mpd::MotionPose>::iterator vel_point_it;
         for(vel_point_it = ramp_plan.begin() + (closest_pose_it - ramp_plan.begin()); vel_point_it != ramp_plan.end(); vel_point_it++)
@@ -383,7 +387,7 @@ namespace motion_planner
             //generate angular velocity.
             double angular_diff = (position <= xy_goal_tolerance_) ? yaw : inplace_mp.twist_ref.angular.z;
             int sign = mpd::sign(angular_diff);
-            double angular_vel = (std::min(std::max(config.wmin, fabs(angular_diff)), config.wmax)) * sign * angular_gain;
+            double angular_vel = (std::min(std::max(config.wmin, fabs(angular_diff) * angular_gain), config.wmax)) * sign;
             angular_vel = (fabs(angular_diff) <= config.yaw_goal_tolerance) ? 0.0 : angular_vel;
             if(inplace_mp.twist_ref.angular.z <= config.yaw_goal_tolerance && inplace_mp.in_place)
             {
@@ -700,6 +704,12 @@ namespace motion_planner
 
     bool MotionPlanner::setGlobalPlan(const mpd::Plan& orig_global_plan)
     {
+        /*
+         * TODO this should be implemented in a better way
+         */
+        //resetting the control command history
+        last_control_w = 0.0;
+        last_control_v = 0.0;
         global_plan_ = orig_global_plan;
         if(!transformPose(motion_frame_, orig_global_plan.front(), start_pose_) && !transformPose(motion_frame_,
                     orig_global_plan.back(), end_pose_))
@@ -846,7 +856,7 @@ namespace motion_planner
 	        config.acc_x = config.load_acc_x;
 	        config.wmax = config.load_wmax;
 	        config.acc_w = config.load_acc_w;
-            //ROS_WARN("LOAD %f %f %f %f", config.vmax, config.wmax, config.vmin, config.acc_x);
+            ROS_WARN("LOAD %f %f %f %f", config.vmax, config.wmax, config.vmin, config.acc_x);
         }
         else
         {
@@ -854,7 +864,7 @@ namespace motion_planner
 	        config.acc_x = config.noload_acc_x;
 	        config.wmax = config.noload_wmax;
 	        config.acc_w = config.noload_acc_w;
-            //ROS_WARN("NOLOAD %f %f", config.vmax, config.wmax);
+            ROS_WARN("NOLOAD %f %f", config.vmax, config.wmax);
 
         }
 
