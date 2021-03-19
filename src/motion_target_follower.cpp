@@ -66,9 +66,9 @@ namespace motion_target_follower
 	{
         //ROS_INFO("LV B : %f", linear_velocity);
         //ROS_INFO("VEL RED FACT %f", (beta * pow(fabs(curvature_), lambda)));
-	    linear_velocity = linear_velocity / (1 + (beta * pow(abs(curvature_), lambda)));
+	    /*linear_velocity = linear_velocity / (1 + (beta * pow(abs(curvature_), lambda)));
         linear_velocity = (linear_velocity < vmin) ? vmin : linear_velocity;
-        linear_velocity = (linear_velocity > vmax) ? vmax : linear_velocity;
+        linear_velocity = (linear_velocity > vmax) ? vmax : linear_velocity;*/
         //ROS_INFO("LV A : %f", linear_velocity);
 	}
 
