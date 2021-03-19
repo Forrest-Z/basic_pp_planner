@@ -57,6 +57,9 @@ namespace motion_target_follower
 	void MotionTargetFollower::updateCurvature(const double r_, const double delta_, double const theta_, double& curvature_)
 	{
 		curvature_ = -(1/r_) * ((k2 * (delta_ - atan(-k1 * theta_))) + ((1 + (k1/(1 + pow((k1 * theta_), 2)))) * sin(delta_)));
+        //limit curvature value to less than 0.4, for r less than 30 cm.
+        int sign = fabs(curvature_) / curvature;
+        curvature_ = (r_ > 0.3) ? curvature_ : (sign * std::min(fabs(curvature_), 0.4)); 
 	}
 
 	void MotionTargetFollower::updateLinearVelocity(const double curvature_, double& linear_velocity)
