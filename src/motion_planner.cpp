@@ -370,8 +370,15 @@ namespace motion_planner
         //ref_pose_pub.publish(ref_pose_);
 
         mpd::MotionPose inplace_mp = ramp_plan.at(0);
+        
+        /*
+         * condition check < xy_goal_tolerance_ to 0.05 to avoid oscillations
+         * in short inplace linear and an inplace turn paths
+         * in Test , not sure a good solution
+         */
 
-        if(min_vel_mp->in_place && euclid_to_minpose < xy_goal_tolerance_)
+        //if(min_vel_mp->in_place && euclid_to_minpose < xy_goal_tolerance_)
+        if(min_vel_mp->in_place && euclid_to_minpose < 0.05)
         {
             inplace_mp = *min_vel_mp;
         }
