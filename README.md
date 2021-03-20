@@ -5,7 +5,7 @@
 * This package contains two controller implemantations, purepursuit and a nonlinear controller.
 * Default controller is the nonlinear controller which can be used as a path tracker or a point stabilizing controller.
 * Motion planner class is handling all motion plans(linear, inplace turns).
-* For linear motion, motion planner generate a suitable linear velocity and controller angular to track the path.
+* For linear motion, motion planner generate a suitable linear velocity and controller generates angular velocity to track the path.
 * Features TODO
     * Replanning and obstacle avoidance.
     * State information for debugging and diagnostics.
