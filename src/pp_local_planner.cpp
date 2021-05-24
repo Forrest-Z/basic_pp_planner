@@ -284,6 +284,7 @@ namespace pp_local_planner {
         {
             dynamic_lookahead = pp_config.max_lookahead;
         }
+        ROS_INFO("Dynamic lookeahd is %f, %f", dynamic_lookahead, robot_vel.linear.x); 
         return dynamic_lookahead;
     }
 

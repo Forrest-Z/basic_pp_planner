@@ -196,6 +196,8 @@ namespace motion_planner
             void clearVisitedPlan(int size);
 
             double getGoalDistance(const geometry_msgs::PoseStamped& robot_pose);
+            bool overshoot_condition(const geometry_msgs::PoseStamped& robot_pose); 
+
 
             /*
              *@brief method to update information about the obstacle present in the robot path. 
@@ -235,6 +237,8 @@ namespace motion_planner
             ros::ServiceServer warning_field_server;
             ros::ServiceServer nav_pause_server;
             std::string motion_frame_;
+            std::vector<geometry_msgs::PoseStamped> list_of_ref_poses; 
+            geometry_msgs::PoseStamped prev_ref_pose; 
             double safe_factor_;
             double xy_goal_tolerance_;
             double yaw_goal_tolerance_;

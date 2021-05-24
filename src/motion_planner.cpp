@@ -133,7 +133,6 @@ namespace motion_planner
             motion_plan.push_back(mp);
             return true;
         }
-
         else if(std::get<1>(ct) >= cross_track_warn)
         {
             vmax = config.vmin;
@@ -142,10 +141,22 @@ namespace motion_planner
 
         //position goal tolerance increasing on cross_track_warn and also robot reaches the
         //goal position with the configured tolerance.
-        if(std::get<1>(ct) >= cross_track_warn || getGoalDistance(global_pose) < xy_goal_tolerance_)
+        //global_pose is the robot's pose
+         
+        if(std::get<1>(ct) >= cross_track_warn || getGoalDistance(global_pose) < xy_goal_tolerance_ || (getGoalDistance(global_pose) < 0.3 && std::get<1>(ct) > 0.05))
+        // if(std::get<1>(ct) >= cross_track_warn || getGoalDistance(global_pose) < xy_goal_tolerance_ || overshoot_condition(global_pose))
         {
+            ROS_WARN("[motion_planner] : increasing tolerance to %f", max_xy_tolerance); 
             xy_goal_tolerance_ = max_xy_tolerance;
         }
+
+
+        if(overshoot_condition(global_pose))
+        {
+            ROS_WARN("[motion_planner] : Detected an overshoot increasing tolerance to %f", max_xy_tolerance); 
+            xy_goal_tolerance_ = max_xy_tolerance;
+        }
+
 
         //iterating over the global plan with in the safe window size to update velocity references.
         //changed iterating upto last point insted of second last point, to avoid referece point not
@@ -367,7 +378,30 @@ namespace motion_planner
 
         double euclid_to_minpose = mpd::euclidean(global_pose, min_vel_mp->pose);
         ref_pose_ = min_vel_mp->pose;
-        //ref_pose_pub.publish(ref_pose_);
+        ref_pose_pub.publish(ref_pose_);
+
+        if (list_of_ref_poses.size() < 2)
+        {
+            list_of_ref_poses.push_back(ref_pose_); 
+        }
+        else 
+        {
+            if (fabs(list_of_ref_poses[0].pose.position.x - ref_pose_.pose.position.x) <= 0.01 && fabs(prev_ref_pose.pose.position.x - list_of_ref_poses[1].pose.position.x) <= 0.01 && fabs(list_of_ref_poses[1].pose.position.x - list_of_ref_poses[0].pose.position.x) >= 0.01)
+            {
+                // cmd_vel.linear.x = 0.05;
+                ROS_ERROR("REF POSE ERROR");
+                ROS_ERROR("REF POSE ERROR"); 
+                ROS_ERROR("REF POSE ERROR"); 
+                ROS_ERROR("REF POSE ERROR"); 
+                ROS_ERROR("REF POSE ERROR"); 
+            }
+            else 
+            {
+                list_of_ref_poses.push_back(ref_pose_);
+                list_of_ref_poses.erase(list_of_ref_poses.begin());
+            }
+        }
+        prev_ref_pose = ref_pose_; 
 
         mpd::MotionPose inplace_mp = ramp_plan.at(0);
         
@@ -418,6 +452,36 @@ namespace motion_planner
             trimMotionPlan(ramp_plan, min_vel_mp->arc_length );
 
             double final_vel_x = config.vmin;
+
+            ///////////////////////////////////////////////////////////////
+
+            // if (mpd::euclidean(global_pose, goal_pose) < 0.20)
+            // {
+            //     ROS_INFO("Within 20cm of goal, setting to 0.5");
+            //     final_vel_x = 0.05;
+            // }
+            // else if (mpd::euclidean(global_pose, goal_pose) >= 0.20 && mpd::euclidean(global_pose, goal_pose) < 1.50)
+            // {
+            //     ROS_INFO("[motion_planner.cpp] : setting to 0.1");
+            //     final_vel_x = 0.10;
+                
+            if (min_vel_mp -> twist_ref.linear.x < 0.001)
+            {
+                if (mpd::euclidean(global_pose, min_vel_mp->pose)  < 0.20)
+                {
+                    ROS_INFO("Within 20cm of goal, setting to 0.5");
+                    final_vel_x = 0.05;
+                }
+                else if (mpd::euclidean(global_pose, min_vel_mp->pose) >= 0.20 && mpd::euclidean(global_pose, min_vel_mp->pose) < 0.60)
+                {
+                    ROS_INFO("[motion_planner.cpp] : setting to 0.1");
+                    final_vel_x = 0.10;
+                }
+            }
+
+            
+            //////////////////////////////////////////////////////////////////
+
             if((position <= xy_goal_tolerance_ || euclid_to_minpose <= 0.1) && !plan_executed)
             {
                 final_vel_x = 0.0;
@@ -591,6 +655,28 @@ namespace motion_planner
         planner_util_->getGoal(tf_goal_pose);
         poseStampedTFToMsg(tf_goal_pose, goal_pose);
         return mpd::euclidean(goal_pose, robot_pose); 
+    }
+
+    
+    bool MotionPlanner::overshoot_condition(const geometry_msgs::PoseStamped& robot_pose)
+    {
+        geometry_msgs::PoseStamped goal_pose, local_robot_pose;
+        local_robot_pose.pose.orientation.z = robot_pose.pose.orientation.z; 
+        
+        tf::Stamped<tf::Pose> tf_goal_pose;
+        planner_util_->getGoal(tf_goal_pose);
+        poseStampedTFToMsg(tf_goal_pose, goal_pose);         
+
+        double local_pose_diff_x = robot_pose.pose.position.x - goal_pose.pose.position.x; 
+        double x_dist = local_pose_diff_x * cos(tf::getYaw(tf_goal_pose.getRotation()));
+
+        ROS_INFO("robot wrt to goal: %0.2f, %0.4f", x_dist, local_robot_pose.pose.orientation.z - goal_pose.pose.orientation.z);
+        if (x_dist > 0.03 && getGoalDistance(robot_pose) < 0.3 && fabs(local_robot_pose.pose.orientation.z - goal_pose.pose.orientation.z) < 0.10)
+        {
+            ROS_WARN("Did the mag overshoot? The mag exceeded the the goal by 7cm. With an orientation difference of 0.05"); 
+            return true;  
+        }
+        return false; 
     }
 
     double MotionPlanner::getPlaneDistance(const geometry_msgs::PoseStamped& pose_a, const geometry_msgs::PoseStamped& pose_b)
@@ -774,6 +860,10 @@ namespace motion_planner
             double footprint_cost = world_model->footprintCost(x, y, theta, footprint_spec);  	
             if(footprint_cost < 0)
             {
+                //publishing obstacle information
+                std_msgs::Bool is_obstacle;
+                is_obstacle.data = true;
+                obstacle_info_pub.publish(is_obstacle); 
                 return true;
             }
         }
