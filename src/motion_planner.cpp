@@ -96,8 +96,8 @@ namespace motion_planner
         double lateral_acc = config.lat_acc; //need to be parameterised.
         xy_goal_tolerance_ = config.xy_goal_tolerance;
         //min distance required for the robot to stop based on the robot base parameters.
-        //double min_stop_dist = pow(robot_vel.linear.x,2) / (2 * max_acc);
-        double min_stop_dist = (pow(vmax, 2) - pow(vmin, 2)) / (2 * (max_acc / 2));
+        double min_stop_dist = pow(robot_vel.linear.x,2) / (2 * max_acc) + max_xy_tolerance;
+        //double min_stop_dist = (pow(vmax, 2) - pow(vmin, 2)) / (2 * (max_acc / 2));
         //ROS_INFO("MIN_STOP 1 %f", min_stop_dist);
         //increasing the window size with an extra safety distance.
         //double safe_distance = min_stop_dist  + safe_factor_; //safe factor should be less than half of local costmap.
@@ -169,6 +169,7 @@ namespace motion_planner
             //estimating the arc length. 
             arc_length += mpd::euclidean(*plan_it, pose_);
             pose_ = *plan_it;
+            closest_pose_pub.publish(pose_);
 
             //generating motion plan up to safe distance.
             if(arc_length > safe_distance)
@@ -259,7 +260,7 @@ namespace motion_planner
                     }
                     else
                     {
-                        path_curvature = (path_curvature <= 0.01) ? 1 : path_curvature;
+                        path_curvature = (path_curvature <= 0.01) ? 0.1 : path_curvature;
                         //fix for zero velocity profile, if goal is at end of a cuve.
                         //use max(vmin, curv_vel) for reference velocity.
                         //this will keep the reference velocity minimum at min vel.
@@ -708,7 +709,7 @@ namespace motion_planner
 
         double menger_curvature = (4 * A) / (mpd::euclidean(pose_a, pose_b) * mpd::euclidean(pose_b, pose_c) * 
                 mpd::euclidean(pose_c, pose_a));
-        return (A < 0.001) ? 1 : menger_curvature * 10; //scaling the curvature value for velocity calculation.
+        return (A < 0.001) ? 0.1 : menger_curvature * 5; //scaling the curvature value for velocity calculation.
         //return menger_curvature * 10; //scaling the curvature value for velocity calculation.
     }
 
@@ -953,7 +954,7 @@ namespace motion_planner
 	        config.acc_x = config.load_acc_x;
 	        config.wmax = config.load_wmax;
 	        config.acc_w = config.load_acc_w;
-            ROS_WARN("LOAD %f %f %f %f", config.vmax, config.wmax, config.vmin, config.acc_x);
+            //ROS_WARN("LOAD %f %f %f %f", config.vmax, config.wmax, config.vmin, config.acc_x);
         }
         else
         {
@@ -961,7 +962,7 @@ namespace motion_planner
 	        config.acc_x = config.noload_acc_x;
 	        config.wmax = config.noload_wmax;
 	        config.acc_w = config.noload_acc_w;
-            ROS_WARN("NOLOAD %f %f", config.vmax, config.wmax);
+            //ROS_WARN("NOLOAD %f %f", config.vmax, config.wmax);
 
         }
 
