@@ -214,7 +214,6 @@ namespace motion_planner
 
             void loadStateConfig();
 
-
             
 
             tf::TransformListener* tf_;
@@ -234,7 +233,8 @@ namespace motion_planner
             ros::Publisher ref_pose_pub;
             ros::Publisher closest_pose_pub;
             ros::Publisher obstacle_info_pub;
-            ros::ServiceServer warning_field_server;
+	    ros::Publisher cross_track_error_pub;
+	    ros::ServiceServer warning_field_server;
             ros::ServiceServer nav_pause_server;
             std::string motion_frame_;
             std::vector<geometry_msgs::PoseStamped> list_of_ref_poses; 
@@ -253,7 +253,7 @@ namespace motion_planner
             bool warning_field_status;
             bool pause_motion;
             bool loaded;
-
+	    std_msgs::Bool cross_track_status;
     };
 };
 
