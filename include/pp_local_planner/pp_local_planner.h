@@ -162,10 +162,10 @@ namespace pp_local_planner {
                     this->start_debug_pub = this->nh_debug.advertise<geometry_msgs::PoseStamped>("/start_pose", 1);
                     this->end_debug_pub = this->nh_debug.advertise<geometry_msgs::PoseStamped>("/end_pose", 1);
                     //this->BMS_sub = this->nh_debug.subscribe<magellan_msgs::BMSBasicInfo>("BMSBasicInfo", 1, boost::bind(&PurepursuitDebug::chatterCallback, this, _1));
-                this->LED_status_pub = this->nh_debug.advertise<std_msgs::UInt8>("/mag250/robot_state", 1);
+                    //this->LED_status_pub = this->nh_debug.advertise<std_msgs::UInt8>("/mag250/robot_state", 1);
                 }
 
-                void chatterCallback(const magellan_msgs::BMSBasicInfo::ConstPtr &data);
+                //void chatterCallback(const magellan_msgs::BMSBasicInfo::ConstPtr &data);
 
                 /*
                  * @brief method to update infos to publish
