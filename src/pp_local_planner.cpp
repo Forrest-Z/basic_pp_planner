@@ -49,6 +49,7 @@ namespace pp_local_planner {
         pp_config.xy_goal_tolerance = config.xy_goal_tolerance;
         pp_config.yaw_goal_tolerance = config.yaw_goal_tolerance;
         pp_config.update_config = config.change_config;
+        pp_config.robot_type = config.robot_type;
         //pp_config.limits_ = planner_util_->getCurrentLimits();
         if(pp_config.update_config)
         {
@@ -69,13 +70,14 @@ namespace pp_local_planner {
 
 
         private_nh.param("global_frame_id", frame_id_, std::string("odom"));
-
         private_nh.param("publish_traj_pc", publish_traj, false);
 
+        ros::NodeHandle node; 
+        visualise_pub = node.advertise<visualization_msgs::Marker>("cmd_vel_viz", 1); 
+
+        // Create pointers to each of the other classes that will be use in this script 
         pp_debug = new PurepursuitDebug;
-
         mplnr = new motion_planner::MotionPlanner(tf_, planner_util_, 2.0, motion_frame_);
-
         mtf = new motion_target_follower::MotionTargetFollower(0.0, 1.0, 0.4, 2.0);
 
     }
@@ -148,11 +150,55 @@ namespace pp_local_planner {
             cmd_vel.linear.x = 0.0;
             cmd_vel.linear.y = 0.0;
             cmd_vel.angular.z = 0.0;
+            std_msgs::UInt8 led_msg;
+            led_msg.data = 4; //red colour
         }
         //bound control inputs
         mplnr->boundControlInput(cmd_vel.linear.x, cmd_vel.angular.z);
         pp_debug->publishDebug();
+        //pp_debug->publishLED(led_msg);
+        publishVisualization(cmd_vel); 
         return true;
+    }
+
+    void PPLocalPlanner::publishVisualization(const geometry_msgs::Twist& cmd_vel)    
+    {
+        std::string linear (std::to_string(cmd_vel.linear.x));
+        std::string angular (std::to_string(cmd_vel.angular.z)); 
+
+        visualization_msgs::Marker obstacle_marker; 
+
+        obstacle_marker.header.frame_id = "mag250_tf/base_link"; 
+        obstacle_marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING; 
+        // obstacle_marker.type = obstacle_marker.ADD;
+
+        obstacle_marker.pose.position.x = -1.0;
+        obstacle_marker.pose.position.y = 0.0; 
+
+        tf::Quaternion q_t;
+
+        q_t.setRPY(0, 0, 0);
+        q_t.normalize();
+
+        //populate the orientation values
+        obstacle_marker.pose.orientation.x = q_t.getX();
+        obstacle_marker.pose.orientation.y = q_t.getY();
+        obstacle_marker.pose.orientation.z = q_t.getZ();
+        obstacle_marker.pose.orientation.w = q_t.getW();
+
+        obstacle_marker.scale.x = 0.5;
+        obstacle_marker.scale.y = 0.5;
+        obstacle_marker.scale.z = 0.5;
+
+        obstacle_marker.color.r = 255;
+        obstacle_marker.color.g = 255;
+        obstacle_marker.color.b = 255;
+        obstacle_marker.color.a = 1;
+
+        obstacle_marker.text = "Linear vel: " + linear + ", " + "Angular vel: " + angular;
+
+        obstacle_marker.lifetime = ros::Duration(15); 						
+        visualise_pub.publish(obstacle_marker);
     }
 
 
@@ -188,7 +234,7 @@ namespace pp_local_planner {
         geometry_msgs::PoseStamped lookahead_pose_base;
         //geometry_msgs::PoseStamped local_target_pose;
         //mplnr->getReferencePose(local_target_pose);
-        mplnr->transformPose("mag500_tf/base_link", lookahead_pose_global, lookahead_pose_base);
+        mplnr->transformPose(pp_config.robot_type+ "_tf/base_link", lookahead_pose_global, lookahead_pose_base);
         double linear_velocity = robot_vel.linear.x;
         mtf->getControlCommands(lookahead_pose_base, linear_vel, angular_vel);
         return true;

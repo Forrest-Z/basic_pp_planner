@@ -96,12 +96,17 @@ namespace motion_planner
         double lateral_acc = config.lat_acc; //need to be parameterised.
         xy_goal_tolerance_ = config.xy_goal_tolerance;
         //min distance required for the robot to stop based on the robot base parameters.
-        double min_stop_dist = pow(robot_vel.linear.x,2) / (2 * max_acc) + max_xy_tolerance;
-        //double min_stop_dist = (pow(vmax, 2) - pow(vmin, 2)) / (2 * (max_acc / 2));
+          double min_stop_dist = (pow(robot_vel.linear.x,2) - pow(vmin, 2)) / (2 * max_acc)+(1.0);
+        // double min_stop_dist = (pow(robot_vel.linear.x,2) - pow(vmin, 2)) / (2 * (max_acc / 2));
+        // double min_stop_dist = (pow(vmax, 2) - pow(vmin, 2)) / (2 * (max_acc / 2))+(max_xy_tolerance);
+        // double min_stop_dist = (pow(vmax, 2) - pow(vmin, 2)) / (2 * (max_acc / 2));
+        // double min_stop_dist = (pow(vmax, 2) - pow(vmin, 2)) / (2 * (max_acc));
+        std::cout << "robot_vel.linear.x: " <<robot_vel.linear.x << std::endl;
         //ROS_INFO("MIN_STOP 1 %f", min_stop_dist);
         //increasing the window size with an extra safety distance.
         //double safe_distance = min_stop_dist  + safe_factor_; //safe factor should be less than half of local costmap.
         double safe_distance = min_stop_dist  + config.obst_stop_dist; //safe factor should be less than half of local costmap.
+        std::cout << "Safe_distance: " <<safe_distance << std::endl;
         //ROS_WARN("SAFE_DISTANCE %f", safe_distance);
         double arc_length = 0.0;
 
@@ -168,6 +173,7 @@ namespace motion_planner
         {
             //estimating the arc length. 
             arc_length += mpd::euclidean(*plan_it, pose_);
+            // std::cout << "arc_length: " <<arc_length << std::endl;
             pose_ = *plan_it;
             closest_pose_pub.publish(pose_);
 
@@ -179,6 +185,7 @@ namespace motion_planner
             mpd::ObstacleInfo obstacle_info;
             if(updateObstacleInfo((*plan_it), footprint_spec, obstacle_info))
             {
+                // ref_pose_pub.publish(*plan_it);
                 mp.obstacle_info = obstacle_info;
                 mp.curvature = INFINITY; //at obstacle position curvature is not calculated.
                 mp.obstacle = true;
@@ -219,6 +226,7 @@ namespace motion_planner
                     path_points = std::make_tuple(*(std::prev(plan_it, no_of_points)), *plan_it, *(std::next(plan_it,
                                     no_of_points)));
                     path_curvature = pathCurvature(path_points);
+                    // std::cout << "Path_curvature: " <<path_curvature << std::endl;
                 }
                 double angular_vel;
                 mp.pose = *plan_it;
@@ -379,7 +387,7 @@ namespace motion_planner
 
         double euclid_to_minpose = mpd::euclidean(global_pose, min_vel_mp->pose);
         ref_pose_ = min_vel_mp->pose;
-        ref_pose_pub.publish(ref_pose_);
+        // ref_pose_pub.publish(ref_pose_);
 
         if (list_of_ref_poses.size() < 2)
         {
@@ -954,7 +962,7 @@ namespace motion_planner
 	        config.acc_x = config.load_acc_x;
 	        config.wmax = config.load_wmax;
 	        config.acc_w = config.load_acc_w;
-            //ROS_WARN("LOAD %f %f %f %f", config.vmax, config.wmax, config.vmin, config.acc_x);
+            ROS_WARN("LOAD %f %f %f %f", config.vmax, config.wmax, config.vmin, config.acc_x);
         }
         else
         {
@@ -962,7 +970,7 @@ namespace motion_planner
 	        config.acc_x = config.noload_acc_x;
 	        config.wmax = config.noload_wmax;
 	        config.acc_w = config.noload_acc_w;
-            //ROS_WARN("NOLOAD %f %f", config.vmax, config.wmax);
+            ROS_WARN("NOLOAD %f %f", config.vmax, config.wmax);
 
         }
 
