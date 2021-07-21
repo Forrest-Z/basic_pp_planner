@@ -27,5 +27,6 @@ struct MotionPlannerConfig
     double xy_goal_tolerance;
     double yaw_goal_tolerance;
     bool update_config;
+    std::string robot_type;
 };
 #endif

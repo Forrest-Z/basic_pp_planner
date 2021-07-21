@@ -43,6 +43,9 @@
 #include <base_local_planner/simple_scored_sampling_planner.h>
 
 #include <nav_msgs/Path.h>
+#include <std_msgs/UInt8.h>
+//#include <magellan_msgs/BMSBasicInfo.h>
+#include <visualization_msgs/Marker.h>
 
 namespace pp_local_planner {
 
@@ -90,6 +93,8 @@ namespace pp_local_planner {
             bool setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan);
             bool ppUpdate(const tf::TransformListener* tf, const geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, std::vector<geometry_msgs::PoseStamped>& local_plan, geometry_msgs::Twist& cmd_vel);
             bool isGoalReached(const geometry_msgs::PoseStamped& robot_pose);
+            void publishVisualization(const geometry_msgs::Twist& cmd_vel);     
+
         private:
 
             /*
@@ -126,6 +131,7 @@ namespace pp_local_planner {
             std::string motion_frame_;
             bool publish_traj;
             bool loaded;
+            ros::Publisher visualise_pub; 
 
             //object to get local planner limit parameters 
             typedef base_local_planner::LocalPlannerLimits planner_limits; 
@@ -155,7 +161,11 @@ namespace pp_local_planner {
                     this->pose_debug_pub = this->nh_debug.advertise<geometry_msgs::PoseStamped>("/lookahead_pose", 1);
                     this->start_debug_pub = this->nh_debug.advertise<geometry_msgs::PoseStamped>("/start_pose", 1);
                     this->end_debug_pub = this->nh_debug.advertise<geometry_msgs::PoseStamped>("/end_pose", 1);
+                    //this->BMS_sub = this->nh_debug.subscribe<magellan_msgs::BMSBasicInfo>("BMSBasicInfo", 1, boost::bind(&PurepursuitDebug::chatterCallback, this, _1));
+                this->LED_status_pub = this->nh_debug.advertise<std_msgs::UInt8>("/mag250/robot_state", 1);
                 }
+
+                void chatterCallback(const magellan_msgs::BMSBasicInfo::ConstPtr &data);
 
                 /*
                  * @brief method to update infos to publish
@@ -198,12 +208,17 @@ namespace pp_local_planner {
                 ros::Publisher pose_debug_pub; 
                 ros::Publisher start_debug_pub; 
                 ros::Publisher end_debug_pub; 
+                //ros::Publisher LED_status_pub; 
+                ros::Subscriber BMS_sub;
                 double dynamic_lookahead;
                 double lateral_shift;
                 double curvature;
                 geometry_msgs::PoseStamped lookahead_pose;
                 geometry_msgs::PoseStamped start_pose_;
                 geometry_msgs::PoseStamped end_pose_;
+                
+                public:
+                bool BMS_battery_indicator = false;
             };
 
             struct MotionPlannerConfig pp_config;
