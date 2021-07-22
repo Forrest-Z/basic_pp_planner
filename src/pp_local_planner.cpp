@@ -234,7 +234,11 @@ namespace pp_local_planner {
         geometry_msgs::PoseStamped lookahead_pose_base;
         //geometry_msgs::PoseStamped local_target_pose;
         //mplnr->getReferencePose(local_target_pose);
+<<<<<<< HEAD
         mplnr->transformPose(pp_config.robot_type+ "_tf/base_link", lookahead_pose_global, lookahead_pose_base);
+=======
+        mplnr->transformPose("/volta1_tf/base_link", lookahead_pose_global, lookahead_pose_base);
+>>>>>>> kinetic-devel-update
         double linear_velocity = robot_vel.linear.x;
         mtf->getControlCommands(lookahead_pose_base, linear_vel, angular_vel);
         return true;

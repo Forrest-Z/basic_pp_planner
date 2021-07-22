@@ -12,8 +12,10 @@
 #include "pp_local_planner/motion_planner.h"
 
 namespace motion_planner
-{
-    MotionPlanner::MotionPlanner(tf::TransformListener* tf, base_local_planner::LocalPlannerUtil* planner_util, double safe_factor, std::string
+{   
+
+
+     MotionPlanner::MotionPlanner(tf::TransformListener* tf, base_local_planner::LocalPlannerUtil* planner_util, double safe_factor, std::string
             motion_frame):tf_{tf}, planner_util_{planner_util}, motion_frame_{motion_frame}
     {
 	initializeConfig();
@@ -30,13 +32,16 @@ namespace motion_planner
         ref_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("ref_pose", 1);
         closest_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("closest_pose", 1);
         obstacle_info_pub = nh.advertise<std_msgs::Bool>("obstacle_info", 1);
-        warning_field_server = nh.advertiseService("warning_field_status", &MotionPlanner::warningFieldCb, this);
+	cross_track_error_pub = nh.advertise<std_msgs::Bool>("cross_track_error", 1);
+	warning_field_server = nh.advertiseService("warning_field_status", &MotionPlanner::warningFieldCb, this);
         nav_pause_server = nh.advertiseService("nav_pause", &MotionPlanner::navPauseCb, this);
-        loaded = true;
+	loaded = true;
+	cross_track_status.data = false;	
     }
     MotionPlanner::MotionPlanner(){}
 
     MotionPlanner::~MotionPlanner(){}
+
 
     void MotionPlanner::boundControlInput(double &v, double &w)
     {
@@ -122,6 +127,7 @@ namespace motion_planner
         double cross_track_warn = config.cross_track_warn;
         double cross_track_stop = config.cross_track_error;
         critical_error = false;
+	cross_track_error_pub.publish(cross_track_status);
 
         //vmax = (std::get<1>(ct) >= cross_track_control) ? limits.min_vel_x : limits.max_vel_x; //not working this mehtod.
         
@@ -136,7 +142,9 @@ namespace motion_planner
             critical_error = true; //using this variable stop producing velocity for this plan.
             mp.error = true;
             motion_plan.push_back(mp);
-            return true;
+	    cross_track_status.data = true;
+	    cross_track_error_pub.publish(cross_track_status);
+	    return true;
         }
         else if(std::get<1>(ct) >= cross_track_warn)
         {
