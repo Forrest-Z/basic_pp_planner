@@ -253,6 +253,7 @@ namespace motion_planner
             bool warning_field_status;
             bool pause_motion;
             bool loaded;
+	    bool obs_prof_over;
 	    std_msgs::Bool cross_track_status;
     };
 };

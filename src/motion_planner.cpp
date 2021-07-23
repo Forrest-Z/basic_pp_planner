@@ -36,6 +36,7 @@ namespace motion_planner
 	warning_field_server = nh.advertiseService("warning_field_status", &MotionPlanner::warningFieldCb, this);
         nav_pause_server = nh.advertiseService("nav_pause", &MotionPlanner::navPauseCb, this);
 	loaded = true;
+	obs_prof_over = false;
 	cross_track_status.data = false;	
     }
     MotionPlanner::MotionPlanner(){}
@@ -54,8 +55,12 @@ namespace motion_planner
         double delta_v = linear_acc * 0.2; //assuming running at 5hz
         double delta_w = angular_acc * 0.2;
         //bounding and profiling the v based on configuration.
-        v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, last_control_v + delta_v)) : std::max(0.0, std::max(v, last_control_v + delta_v));
-        int sign = mpd::sign(last_control_w + delta_w);
+
+	if(obs_prof_over == true){
+		return;
+	}
+	v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, last_control_v + delta_v)) : std::max(0.0, std::max(v, last_control_v + delta_v));
+	int sign = mpd::sign(last_control_w + delta_w);
         //profiling w based on the configuration.
         w = (angular_acc > 0.0) ?  std::min(w, last_control_w + delta_w) : std::max(w, last_control_w + delta_w);
         last_control_v = v;
@@ -100,7 +105,10 @@ namespace motion_planner
         double max_acc = config.acc_x; 
         double lateral_acc = config.lat_acc; //need to be parameterised.
         xy_goal_tolerance_ = config.xy_goal_tolerance;
-        //min distance required for the robot to stop based on the robot base parameters.
+        
+	obs_prof_over = false;
+
+	//min distance required for the robot to stop based on the robot base parameters.
           double min_stop_dist = (pow(robot_vel.linear.x,2) - pow(vmin, 2)) / (2 * max_acc)+(1.0);
         // double min_stop_dist = (pow(robot_vel.linear.x,2) - pow(vmin, 2)) / (2 * (max_acc / 2));
         // double min_stop_dist = (pow(vmax, 2) - pow(vmin, 2)) / (2 * (max_acc / 2))+(max_xy_tolerance);
@@ -215,6 +223,7 @@ namespace motion_planner
                     mp.arc_length = 0.0;
                     mp.twist_ref.linear.x = 0.0;
                     mp.twist_ref.angular.z = 0.0;
+		    obs_prof_over = true;
                     motion_plan.push_back(mp);
                 }
                 break; 
