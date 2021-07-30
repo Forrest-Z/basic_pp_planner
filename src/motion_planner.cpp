@@ -1,4 +1,4 @@
-/*********************************************************************
+/**********************************************************************
  *
  * Software License Agreement 
  *
@@ -44,21 +44,23 @@ namespace motion_planner
     MotionPlanner::~MotionPlanner(){}
 
 
-    void MotionPlanner::boundControlInput(double &v, double &w)
+    void MotionPlanner::boundControlInput(double &v, double &w,const double &robot_vel_linear_x)
     {
         //bounding the w values based on the configuration only wmax is considered.
         //considering wmin can create issue in tracking.
         //w = (fabs(w) < config.wmin) ? 0.0 : mpd::sign(w) * std::min(config.wmax, fabs(w));
         w = mpd::sign(w) * std::min(config.wmax, fabs(w));
-        double linear_acc = (v - last_control_v) / fabs(v - last_control_v) * config.acc_x;
+
+        if(obs_prof_over == true){
+		config.acc_x = config.safety_acc_x;
+	}
+		
+	double linear_acc = (v - last_control_v) / fabs(v - last_control_v) * config.acc_x;
         double angular_acc = (w - last_control_w) / fabs(w - last_control_w) * config.acc_w;
         double delta_v = linear_acc * 0.2; //assuming running at 5hz
         double delta_w = angular_acc * 0.2;
         //bounding and profiling the v based on configuration.
 
-	if(obs_prof_over == true){
-		return;
-	}
 	v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, last_control_v + delta_v)) : std::max(0.0, std::max(v, last_control_v + delta_v));
 	int sign = mpd::sign(last_control_w + delta_w);
         //profiling w based on the configuration.
@@ -939,6 +941,8 @@ namespace motion_planner
         config.noload_wmax = latest_config.noload_wmax;
 	    config.load_acc_x = latest_config.load_acc_x;
 	    config.noload_acc_x = latest_config.noload_acc_x;
+	    // safety to overwrite profiling when obstacle is detected   
+	    config.safety_acc_x = latest_config.safety_acc_x;
 	    config.load_acc_w = latest_config.load_acc_w;
 	    config.noload_acc_w = latest_config.noload_acc_w;
         config.vmin = latest_config.vmin;

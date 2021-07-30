@@ -27,6 +27,8 @@ struct MotionPlannerConfig
     double xy_goal_tolerance;
     double yaw_goal_tolerance;
     bool update_config;
+    //Adding safety acceleration x
+    double safety_acc_x;
     std::string robot_type;
 };
 #endif

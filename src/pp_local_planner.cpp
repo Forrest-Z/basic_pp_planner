@@ -34,7 +34,9 @@ namespace pp_local_planner {
         pp_config.load_wmax = config.load_wmax; 
         pp_config.noload_wmax = config.noload_wmax; 
         pp_config.load_acc_x = config.load_acc_x; 
-        pp_config.noload_acc_x = config.noload_acc_x; 
+        // Safety for overwriting profiling on obstacle detection
+	pp_config.safety_acc_x = config.safety_acc_x;
+	pp_config.noload_acc_x = config.noload_acc_x; 
         pp_config.load_acc_w = config.load_acc_w; 
         pp_config.noload_acc_w = config.noload_acc_w;
         pp_config.vmin = config.vmin;
@@ -154,7 +156,7 @@ namespace pp_local_planner {
             led_msg.data = 4; //red colour
         }
         //bound control inputs
-        mplnr->boundControlInput(cmd_vel.linear.x, cmd_vel.angular.z);
+        mplnr->boundControlInput(cmd_vel.linear.x, cmd_vel.angular.z, robot_vel.linear.x);
         pp_debug->publishDebug();
         //pp_debug->publishLED(led_msg);
         publishVisualization(cmd_vel); 

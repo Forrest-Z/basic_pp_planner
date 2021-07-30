@@ -75,7 +75,7 @@ namespace motion_planner
                     global_pose, const geometry_msgs::Twist& robot_vel, std::vector<geometry_msgs::Point>
                     footprint_spec, mpd::MotionPlan& motion_plan);
             
-            void boundControlInput(double& v, double& w);
+            void boundControlInput(double& v, double& w, const double& robot_vel_linear_x);
             
             double getDisFromPointToLine(const geometry_msgs::PoseStamped& pose, double a, double b, double c);
             
