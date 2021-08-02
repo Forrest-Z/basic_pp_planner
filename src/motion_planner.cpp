@@ -15,7 +15,7 @@ namespace motion_planner
 {   
 
 
-     MotionPlanner::MotionPlanner(tf::TransformListener* tf, base_local_planner::LocalPlannerUtil* planner_util, double safe_factor, std::string
+    MotionPlanner::MotionPlanner(tf::TransformListener* tf, base_local_planner::LocalPlannerUtil* planner_util, double safe_factor, std::string
             motion_frame):tf_{tf}, planner_util_{planner_util}, motion_frame_{motion_frame}
     {
 	initializeConfig();
@@ -32,12 +32,15 @@ namespace motion_planner
         ref_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("ref_pose", 1);
         closest_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("closest_pose", 1);
         obstacle_info_pub = nh.advertise<std_msgs::Bool>("obstacle_info", 1);
-	cross_track_error_pub = nh.advertise<std_msgs::Bool>("cross_track_error", 1);
-	warning_field_server = nh.advertiseService("warning_field_status", &MotionPlanner::warningFieldCb, this);
+        //cross_track_error publisher
+        cross_track_error_pub = nh.advertise<std_msgs::Bool>("cross_track_error", 1);
+        warning_field_server = nh.advertiseService("warning_field_status", &MotionPlanner::warningFieldCb, this);
         nav_pause_server = nh.advertiseService("nav_pause", &MotionPlanner::navPauseCb, this);
-	loaded = true;
-	obs_prof_over = false;
-	cross_track_status.data = false;	
+        loaded = true;
+        //tracking variable for profile overwriting when obstacle is detected
+        obs_prof_over = false;
+        //tracking variable for updating status of cross_track_error
+        cross_track_status.data = false;	
     }
     MotionPlanner::MotionPlanner(){}
 
@@ -51,18 +54,33 @@ namespace motion_planner
         //w = (fabs(w) < config.wmin) ? 0.0 : mpd::sign(w) * std::min(config.wmax, fabs(w));
         w = mpd::sign(w) * std::min(config.wmax, fabs(w));
 
+        //overwriting linear acceleation x on obstacle detection with safety linear acceleration
         if(obs_prof_over == true){
 		config.acc_x = config.safety_acc_x;
-	}
+        }
 		
-	double linear_acc = (v - last_control_v) / fabs(v - last_control_v) * config.acc_x;
-        double angular_acc = (w - last_control_w) / fabs(w - last_control_w) * config.acc_w;
+        //initializing acceleration with config.accleration and using delta_v/abs(delta_v) to imply sign of acceleration
+	    double linear_acc = ((v - last_control_v) / fabs(v - last_control_v)) * config.acc_x;
+        double angular_acc = ((w - last_control_w) / fabs(w - last_control_w)) * config.acc_w;
+
         double delta_v = linear_acc * 0.2; //assuming running at 5hz
         double delta_w = angular_acc * 0.2;
-        //bounding and profiling the v based on configuration.
+        
+        //feedback from odometry
+        double feedback = robot_vel_linear_x + linear_acc * 0.2;
 
-	v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, last_control_v + delta_v)) : std::max(0.0, std::max(v, last_control_v + delta_v));
-	int sign = mpd::sign(last_control_w + delta_w);
+        //bounding v by feedback from odometry
+        /*
+        double vel = last_control_v + delta_v;
+        if(vel <= feedback){
+            v = vel;
+            last_control_v = v;
+        }
+        */
+        
+        //bounding and profiling the v based on configuration.
+        v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, last_control_v + delta_v)) : std::max(0.0, std::max(v, last_control_v + delta_v));
+        int sign = mpd::sign(last_control_w + delta_w);
         //profiling w based on the configuration.
         w = (angular_acc > 0.0) ?  std::min(w, last_control_w + delta_w) : std::max(w, last_control_w + delta_w);
         last_control_v = v;
