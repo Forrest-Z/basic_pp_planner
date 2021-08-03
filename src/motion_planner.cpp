@@ -67,14 +67,14 @@ namespace motion_planner
         double delta_w = angular_acc * 0.2;
         
         //feedback from odometry
-        double feedback = robot_vel_linear_x + delta_v;
+        double feedback = robot_vel_linear_x; //+ delta_v;
 
         //bounding v by feedback from odometry
         
         double vel = last_control_v + delta_v;
         if(vel <= (feedback + config.arb_const_v))
         {
-            last_control_v = v;
+            last_control_v = vel;
             v = vel;
         }
         else{
