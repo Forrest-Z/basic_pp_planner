@@ -1,6 +1,6 @@
 #ifndef PLANNER_CONFIG
 #define PLANNER_CONFIG
-
+#include <iostream>
 struct MotionPlannerConfig
 {
     double vmax;
@@ -30,5 +30,7 @@ struct MotionPlannerConfig
     //Adding safety acceleration x
     double safety_acc_x;
     std::string robot_type;
+    //Adding arbitary constant for bounding linear cmd_vel
+    double arb_const_v;
 };
 #endif
