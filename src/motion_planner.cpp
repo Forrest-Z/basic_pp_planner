@@ -74,10 +74,6 @@ namespace motion_planner
         double vel = last_control_v + delta_v;
         if(vel <= (feedback + config.arb_const_v))
         {
-            last_control_v = vel;
-            v = vel;
-        }
-        else{
             v = last_control_v;
         }
         
