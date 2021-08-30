@@ -55,12 +55,18 @@ namespace motion_planner
         w = mpd::sign(w) * std::min(config.wmax, fabs(w));
 
         //overwriting linear acceleation x on obstacle detection with safety linear acceleration
-        if(obs_prof_over == true){
-		config.acc_x = config.safety_acc_x;
+        double acc_x = 0.05;
+        if(obs_prof_over == true)
+        {
+		    acc_x = config.safety_acc_x;
+        }
+        else
+        {
+		    acc_x = config.acc_x;
         }
 		
         //initializing acceleration with config.accleration and using delta_v/abs(delta_v) to imply sign of acceleration
-	    double linear_acc = ((v - last_control_v) / fabs(v - last_control_v)) * config.acc_x;
+	    double linear_acc = ((v - last_control_v) / fabs(v - last_control_v)) * acc_x;
         double angular_acc = ((w - last_control_w) / fabs(w - last_control_w)) * config.acc_w;
 
         double delta_v = linear_acc * 0.2; //assuming running at 5hz
@@ -68,25 +74,6 @@ namespace motion_planner
         
         //bounding and profiling the v based on configuration.
         v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, last_control_v + delta_v)) : std::max(0.0, std::max(v, last_control_v + delta_v));
-        int sign = mpd::sign(last_control_w + delta_w);
-        
-        if(sign > 0){
-            if(v <= robot_vel_linear_x + delta_v + config.arb_const_v){
-                last_control_v = v;
-            }
-            else{
-                v = last_control_v;
-            }
-        }
-
-        else{
-            if(v >= robot_vel_linear_x - (delta_v + config.arb_const_v){
-                last_control_v = v;
-            }
-            else{
-                v = last_control_v;
-            }
-        }
         //profiling w based on the configuration.
         w = (angular_acc > 0.0) ?  std::min(w, last_control_w + delta_w) : std::max(w, last_control_w + delta_w);
         last_control_v = v;
@@ -789,6 +776,7 @@ namespace motion_planner
 	    config.cross_track_error = 0.5;
         config.xy_goal_tolerance = 0.05;
         config.yaw_goal_tolerance = 0.05;
+        config.safety_acc_x = 0.5;
         max_xy_tolerance = 0.2;
         max_yaw_goal_tolerance = 0.2;
         last_control_v = 0.0;
@@ -977,6 +965,8 @@ namespace motion_planner
 	    config.cross_track_error = latest_config.cross_track_error;
         config.xy_goal_tolerance = latest_config.xy_goal_tolerance;
         config.yaw_goal_tolerance = latest_config.yaw_goal_tolerance;
+        config.safety_acc_x = latest_config.safety_acc_x;
+
     }
 
     bool MotionPlanner::warningFieldCb(std_srvs::SetBoolRequest& field_status, std_srvs::SetBoolResponse& response)

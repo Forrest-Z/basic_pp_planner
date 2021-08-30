@@ -35,8 +35,8 @@ namespace pp_local_planner {
         pp_config.noload_wmax = config.noload_wmax; 
         pp_config.load_acc_x = config.load_acc_x; 
         // Safety for overwriting profiling on obstacle detection
-	pp_config.safety_acc_x = config.safety_acc_x;
-	pp_config.noload_acc_x = config.noload_acc_x; 
+	    pp_config.safety_acc_x = config.safety_acc_x;
+	    pp_config.noload_acc_x = config.noload_acc_x; 
         pp_config.load_acc_w = config.load_acc_w; 
         pp_config.noload_acc_w = config.noload_acc_w;
         pp_config.vmin = config.vmin;
