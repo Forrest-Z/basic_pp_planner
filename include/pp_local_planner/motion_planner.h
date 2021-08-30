@@ -13,6 +13,7 @@
 #define MOTION_PLANNER_H 
 
 #include "geometry_msgs/PoseStamped.h"
+#include <geometry_msgs/Twist.h>
 #include "motion_planner_data.h"
 #include "pp_local_planner/motion_planner_config.h"
 #include <std_msgs/Bool.h>
@@ -75,7 +76,7 @@ namespace motion_planner
                     global_pose, const geometry_msgs::Twist& robot_vel, std::vector<geometry_msgs::Point>
                     footprint_spec, mpd::MotionPlan& motion_plan);
             
-            void boundControlInput(double& v, double& w, const double& robot_vel_linear_x);
+            void boundControlInput(double& v, double& w, const geometry_msgs::Twist& robot_vel);
             
             double getDisFromPointToLine(const geometry_msgs::PoseStamped& pose, double a, double b, double c);
             

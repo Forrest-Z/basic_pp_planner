@@ -47,7 +47,7 @@ namespace motion_planner
     MotionPlanner::~MotionPlanner(){}
 
 
-    void MotionPlanner::boundControlInput(double &v, double &w,const double &robot_vel_linear_x)
+    void MotionPlanner::boundControlInput(double &v, double &w,const geometry_msgs::Twist& robot_vel)
     {
         //bounding the w values based on the configuration only wmax is considered.
         //considering wmin can create issue in tracking.
@@ -74,8 +74,12 @@ namespace motion_planner
         
         //bounding and profiling the v based on configuration.
         v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, last_control_v + delta_v)) : std::max(0.0, std::max(v, last_control_v + delta_v));
+        //v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, robot_vel.linear.x + delta_v)) : std::max(0.0, std::max(v, robot_vel.linear.x + delta_v));
+        v = std::max(std::min(v, robot_vel.linear.x + fabs(delta_v)), robot_vel.linear.x - fabs(delta_v));
         //profiling w based on the configuration.
-        w = (angular_acc > 0.0) ?  std::min(w, last_control_w + delta_w) : std::max(w, last_control_w + delta_w);
+        //w = (angular_acc > 0.0) ?  std::min(w, last_control_w + delta_w) : std::max(w, last_control_w + delta_w);
+        //w = std::max(std::min(w, robot_vel.angular.z + fabs(delta_w)), robot_vel.angular.z - fabs(delta_w));
+        w = (angular_acc > 0.0) ?  std::min(w, robot_vel.angular.z + delta_w) : std::max(w, robot_vel.angular.z + delta_w);
         last_control_v = v;
         last_control_w = w;
 

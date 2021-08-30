@@ -156,7 +156,7 @@ namespace pp_local_planner {
             led_msg.data = 4; //red colour
         }
         //bound control inputs
-        mplnr->boundControlInput(cmd_vel.linear.x, cmd_vel.angular.z, robot_vel.linear.x);
+        mplnr->boundControlInput(cmd_vel.linear.x, cmd_vel.angular.z, robot_vel);
         pp_debug->publishDebug();
         //pp_debug->publishLED(led_msg);
         publishVisualization(cmd_vel); 
