@@ -40,7 +40,6 @@ namespace motion_planner
         //tracking variable for profile overwriting when obstacle is detected
         obs_prof_over = false;
         //tracking variable for updating status of cross_track_error
-        cross_track_status.data = false;	
     }
     MotionPlanner::MotionPlanner(){}
 
@@ -152,7 +151,8 @@ namespace motion_planner
         double cross_track_warn = config.cross_track_warn;
         double cross_track_stop = config.cross_track_error;
         critical_error = false;
-	cross_track_error_pub.publish(cross_track_status);
+	std_msgs::Bool cross_track_status;
+	cross_track_status.data = false;
 
         //vmax = (std::get<1>(ct) >= cross_track_control) ? limits.min_vel_x : limits.max_vel_x; //not working this mehtod.
         
@@ -176,7 +176,7 @@ namespace motion_planner
             vmax = config.vmin;
             ROS_WARN("CROSS TRACK ERROR WARN REDUCING SPEED");
         }
-
+	cross_track_error_pub.publish(cross_track_status);
         //position goal tolerance increasing on cross_track_warn and also robot reaches the
         //goal position with the configured tolerance.
         //global_pose is the robot's pose
