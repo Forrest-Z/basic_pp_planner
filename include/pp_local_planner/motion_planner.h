@@ -17,6 +17,7 @@
 #include "motion_planner_data.h"
 #include "pp_local_planner/motion_planner_config.h"
 #include <std_msgs/Bool.h>
+#include <std_msgs/Float32.h>
 #include "std_srvs/SetBoolRequest.h"
 #include "std_srvs/SetBoolResponse.h"
 
@@ -235,6 +236,7 @@ namespace motion_planner
             ros::Publisher closest_pose_pub;
             ros::Publisher obstacle_info_pub;
 	    ros::Publisher cross_track_error_pub;
+            ros::Publisher cross_track_debug;
 	    ros::ServiceServer warning_field_server;
             ros::ServiceServer nav_pause_server;
             std::string motion_frame_;

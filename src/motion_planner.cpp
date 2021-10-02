@@ -34,6 +34,7 @@ namespace motion_planner
         obstacle_info_pub = nh.advertise<std_msgs::Bool>("obstacle_info", 1);
         //cross_track_error publisher
         cross_track_error_pub = nh.advertise<std_msgs::Bool>("cross_track_error", 1);
+        cross_track_debug = nh.advertise<std_msgs::Float32>("cross_track_debug", 1);
         warning_field_server = nh.advertiseService("warning_field_status", &MotionPlanner::warningFieldCb, this);
         nav_pause_server = nh.advertiseService("nav_pause", &MotionPlanner::navPauseCb, this);
         loaded = true;
@@ -52,7 +53,9 @@ namespace motion_planner
         //considering wmin can create issue in tracking.
         //w = (fabs(w) < config.wmin) ? 0.0 : mpd::sign(w) * std::min(config.wmax, fabs(w));
         w = mpd::sign(w) * std::min(config.wmax, fabs(w));
-
+        double max_control_delay = 0.2;
+        static bool control_error = false;
+        double allowed_control_delay = (control_error = true) ? (std::max(0.0, 0.05)) : max_control_delay;
         //overwriting linear acceleation x on obstacle detection with safety linear acceleration
         double acc_x = 0.05;
         if(obs_prof_over == true)
@@ -65,20 +68,33 @@ namespace motion_planner
         }
 		
         //initializing acceleration with config.accleration and using delta_v/abs(delta_v) to imply sign of acceleration
-	    double linear_acc = ((v - last_control_v) / fabs(v - last_control_v)) * acc_x;
+	double linear_acc = ((v - last_control_v) / fabs(v - last_control_v)) * acc_x;
         double angular_acc = ((w - last_control_w) / fabs(w - last_control_w)) * config.acc_w;
 
         double delta_v = linear_acc * 0.2; //assuming running at 5hz
-        double delta_w = angular_acc * 0.2;
         
         //bounding and profiling the v based on configuration.
+        double temp_v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, last_control_v + delta_v)) : std::max(0.0, std::max(v, last_control_v + delta_v));
+        if((temp_v - robot_vel.linear.x) > allowed_control_delay)
+        {
+            control_error = true;
+            v = robot_vel.linear.x + 0.05;
+        }
+        else
+        {
+            control_error = false;
+        }
+
         v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, last_control_v + delta_v)) : std::max(0.0, std::max(v, last_control_v + delta_v));
         //v = (linear_acc > 0.0) ? std::min(config.vmax, std::min(v, robot_vel.linear.x + delta_v)) : std::max(0.0, std::max(v, robot_vel.linear.x + delta_v));
-        v = std::max(std::min(v, robot_vel.linear.x + fabs(delta_v)), robot_vel.linear.x - fabs(delta_v));
+        //v = std::max(std::min(v, robot_vel.linear.x + fabs(delta_v)), robot_vel.linear.x - fabs(delta_v));
         //profiling w based on the configuration.
         //w = (angular_acc > 0.0) ?  std::min(w, last_control_w + delta_w) : std::max(w, last_control_w + delta_w);
         //w = std::max(std::min(w, robot_vel.angular.z + fabs(delta_w)), robot_vel.angular.z - fabs(delta_w));
-        w = (angular_acc > 0.0) ?  std::min(w, robot_vel.angular.z + delta_w) : std::max(w, robot_vel.angular.z + delta_w);
+        //w = (angular_acc > 0.0) ?  std::min(w, robot_vel.angular.z + delta_w) : std::max(w, robot_vel.angular.z + delta_w);
+        double delta_w = w - robot_vel.angular.z;
+        delta_w = mpd::sign(delta_w) * std::min(fabs(delta_w), config.acc_w*0.2);
+        w = robot_vel.angular.z + delta_w;
         last_control_v = v;
         last_control_w = w;
 
@@ -130,12 +146,10 @@ namespace motion_planner
         // double min_stop_dist = (pow(vmax, 2) - pow(vmin, 2)) / (2 * (max_acc / 2))+(max_xy_tolerance);
         // double min_stop_dist = (pow(vmax, 2) - pow(vmin, 2)) / (2 * (max_acc / 2));
         // double min_stop_dist = (pow(vmax, 2) - pow(vmin, 2)) / (2 * (max_acc));
-        std::cout << "robot_vel.linear.x: " <<robot_vel.linear.x << std::endl;
         //ROS_INFO("MIN_STOP 1 %f", min_stop_dist);
         //increasing the window size with an extra safety distance.
         //double safe_distance = min_stop_dist  + safe_factor_; //safe factor should be less than half of local costmap.
         double safe_distance = min_stop_dist  + config.obst_stop_dist; //safe factor should be less than half of local costmap.
-        std::cout << "Safe_distance: " <<safe_distance << std::endl;
         //ROS_WARN("SAFE_DISTANCE %f", safe_distance);
         double arc_length = 0.0;
 
@@ -148,11 +162,14 @@ namespace motion_planner
         mpd::MotionPose initial_safe_motion_pose;
         std::vector<geometry_msgs::PoseStamped>::const_iterator plan_it;
         mpd::CrossTrackInfo ct = crossTrackError(plan, global_pose);
+        std_msgs::Float32 ct_debug;
+        ct_debug.data = std::get<1>(ct);
+        cross_track_debug.publish(ct_debug);
         double cross_track_warn = config.cross_track_warn;
         double cross_track_stop = config.cross_track_error;
         critical_error = false;
-	std_msgs::Bool cross_track_status;
-	cross_track_status.data = false;
+	    std_msgs::Bool cross_track_status;
+	    cross_track_status.data = false;
 
         //vmax = (std::get<1>(ct) >= cross_track_control) ? limits.min_vel_x : limits.max_vel_x; //not working this mehtod.
         
@@ -163,20 +180,18 @@ namespace motion_planner
 
         if(std::get<1>(ct) >= cross_track_stop)
         {
-            ROS_WARN("CROSS TRACK ERROR CRITICAL STOPPING");
             critical_error = true; //using this variable stop producing velocity for this plan.
             mp.error = true;
             motion_plan.push_back(mp);
-	    cross_track_status.data = true;
-	    cross_track_error_pub.publish(cross_track_status);
-	    return true;
+	        cross_track_status.data = true;
+	        cross_track_error_pub.publish(cross_track_status);
+	        return true;
         }
         else if(std::get<1>(ct) >= cross_track_warn)
         {
             vmax = config.vmin;
-            ROS_WARN("CROSS TRACK ERROR WARN REDUCING SPEED");
         }
-	cross_track_error_pub.publish(cross_track_status);
+	    cross_track_error_pub.publish(cross_track_status);
         //position goal tolerance increasing on cross_track_warn and also robot reaches the
         //goal position with the configured tolerance.
         //global_pose is the robot's pose
@@ -184,14 +199,14 @@ namespace motion_planner
         if(std::get<1>(ct) >= cross_track_warn || getGoalDistance(global_pose) < xy_goal_tolerance_ || (getGoalDistance(global_pose) < 0.3 && std::get<1>(ct) > 0.05))
         // if(std::get<1>(ct) >= cross_track_warn || getGoalDistance(global_pose) < xy_goal_tolerance_ || overshoot_condition(global_pose))
         {
-            ROS_WARN("[motion_planner] : increasing tolerance to %f", max_xy_tolerance); 
+            //ROS_WARN("[motion_planner] : increasing tolerance to %f", max_xy_tolerance); 
             xy_goal_tolerance_ = max_xy_tolerance;
         }
 
 
         if(overshoot_condition(global_pose))
         {
-            ROS_WARN("[motion_planner] : Detected an overshoot increasing tolerance to %f", max_xy_tolerance); 
+            //ROS_WARN("[motion_planner] : Detected an overshoot increasing tolerance to %f", max_xy_tolerance); 
             xy_goal_tolerance_ = max_xy_tolerance;
         }
 
@@ -206,7 +221,6 @@ namespace motion_planner
         {
             //estimating the arc length. 
             arc_length += mpd::euclidean(*plan_it, pose_);
-            // std::cout << "arc_length: " <<arc_length << std::endl;
             pose_ = *plan_it;
             closest_pose_pub.publish(pose_);
 
@@ -234,7 +248,6 @@ namespace motion_planner
                 }
                 else 
                 {
-                    ROS_WARN("CLOSE TO OBSTACLE, APPLY SAFE STOP");
                     motion_plan.clear(); // clear plan to put no motion plan since there is no enough space to move.
                     mp.pose = *plan_it;
                     mp.arc_length = 0.0;
@@ -260,7 +273,6 @@ namespace motion_planner
                     path_points = std::make_tuple(*(std::prev(plan_it, no_of_points)), *plan_it, *(std::next(plan_it,
                                     no_of_points)));
                     path_curvature = pathCurvature(path_points);
-                    // std::cout << "Path_curvature: " <<path_curvature << std::endl;
                 }
                 double angular_vel;
                 mp.pose = *plan_it;
@@ -432,11 +444,6 @@ namespace motion_planner
             if (fabs(list_of_ref_poses[0].pose.position.x - ref_pose_.pose.position.x) <= 0.01 && fabs(prev_ref_pose.pose.position.x - list_of_ref_poses[1].pose.position.x) <= 0.01 && fabs(list_of_ref_poses[1].pose.position.x - list_of_ref_poses[0].pose.position.x) >= 0.01)
             {
                 // cmd_vel.linear.x = 0.05;
-                ROS_ERROR("REF POSE ERROR");
-                ROS_ERROR("REF POSE ERROR"); 
-                ROS_ERROR("REF POSE ERROR"); 
-                ROS_ERROR("REF POSE ERROR"); 
-                ROS_ERROR("REF POSE ERROR"); 
             }
             else 
             {
@@ -512,12 +519,10 @@ namespace motion_planner
             {
                 if (mpd::euclidean(global_pose, min_vel_mp->pose)  < 0.20)
                 {
-                    ROS_INFO("Within 20cm of goal, setting to 0.5");
                     final_vel_x = 0.05;
                 }
                 else if (mpd::euclidean(global_pose, min_vel_mp->pose) >= 0.20 && mpd::euclidean(global_pose, min_vel_mp->pose) < 0.60)
                 {
-                    ROS_INFO("[motion_planner.cpp] : setting to 0.1");
                     final_vel_x = 0.10;
                 }
             }
@@ -666,16 +671,23 @@ namespace motion_planner
         double min_dis = pow(10, 5);
         mpd::CrossTrackInfo cross_track_info = std::make_pair(plan.at(0), min_dis); //setting up the pos at start of global 
         //plan dist as 10000.
+        auto valid_it = plan.begin();
         for(auto plan_it = plan.begin(); plan_it != plan.end(); plan_it++)
         {
-            if(mpd::euclidean(global_pose, *plan_it) > 3.0) //limiting search 3m from robot in the global plan.
+            double euclid = (mpd::euclidean(global_pose, *plan_it));
+            if(euclid > 3.0) //limiting search 3m from robot in the global plan.
             {
                 break;
             }
-            double robot_shift = getPlaneDistance(global_pose, *plan_it); 
-            cross_track_info = (robot_shift < std::get<1>(cross_track_info)) ? std::make_pair(*plan_it, robot_shift) :
-                cross_track_info;
+            if(euclid < min_dis)
+            {
+                min_dis = euclid;
+                valid_it = plan_it;
+            }
+
         }
+        double robot_shift = getPlaneDistance(global_pose, *valid_it); 
+        cross_track_info = (robot_shift < std::get<1>(cross_track_info)) ? std::make_pair(*valid_it, robot_shift) : cross_track_info;
         return cross_track_info; 
     }
 
@@ -713,10 +725,9 @@ namespace motion_planner
         double local_pose_diff_x = robot_pose.pose.position.x - goal_pose.pose.position.x; 
         double x_dist = local_pose_diff_x * cos(tf::getYaw(tf_goal_pose.getRotation()));
 
-        ROS_INFO("robot wrt to goal: %0.2f, %0.4f", x_dist, local_robot_pose.pose.orientation.z - goal_pose.pose.orientation.z);
         if (x_dist > 0.03 && getGoalDistance(robot_pose) < 0.3 && fabs(local_robot_pose.pose.orientation.z - goal_pose.pose.orientation.z) < 0.10)
         {
-            ROS_WARN("Did the mag overshoot? The mag exceeded the the goal by 7cm. With an orientation difference of 0.05"); 
+            //ROS_WARN("Did the mag overshoot? The mag exceeded the the goal by 7cm. With an orientation difference of 0.05"); 
             return true;  
         }
         return false; 
@@ -821,7 +832,6 @@ namespace motion_planner
         double angle = angles::shortest_angular_distance(robot_yaw, goal_yaw);
         if((position <= xy_goal_tolerance_) && (fabs(angle) <= config.yaw_goal_tolerance))
         {
-            ROS_INFO("GOAL");
             return true;
         }
         //ROS_INFO("NOT GOAL");
@@ -1001,7 +1011,6 @@ namespace motion_planner
 	        config.acc_x = config.load_acc_x;
 	        config.wmax = config.load_wmax;
 	        config.acc_w = config.load_acc_w;
-            ROS_WARN("LOAD %f %f %f %f", config.vmax, config.wmax, config.vmin, config.acc_x);
         }
         else
         {
@@ -1009,7 +1018,6 @@ namespace motion_planner
 	        config.acc_x = config.noload_acc_x;
 	        config.wmax = config.noload_wmax;
 	        config.acc_w = config.noload_acc_w;
-            ROS_WARN("NOLOAD %f %f", config.vmax, config.wmax);
 
         }
 
