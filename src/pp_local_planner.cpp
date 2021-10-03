@@ -156,21 +156,24 @@ namespace pp_local_planner {
             led_msg.data = 4; //red colour
         }
         //bound control inputs
+        auto ref_vel = cmd_vel;
         mplnr->boundControlInput(cmd_vel.linear.x, cmd_vel.angular.z, robot_vel);
         pp_debug->publishDebug();
         //pp_debug->publishLED(led_msg);
-        publishVisualization(cmd_vel); 
+        publishVisualization(cmd_vel, ref_vel); 
         return true;
     }
 
-    void PPLocalPlanner::publishVisualization(const geometry_msgs::Twist& cmd_vel)    
+    void PPLocalPlanner::publishVisualization(const geometry_msgs::Twist& cmd_vel, const geometry_msgs::Twist& ref_vel)    
     {
-        std::string linear (std::to_string(cmd_vel.linear.x));
-        std::string angular (std::to_string(cmd_vel.angular.z)); 
+        std::string cmd_linear (std::to_string(cmd_vel.linear.x));
+        std::string ref_linear (std::to_string(ref_vel.linear.x));
+        std::string cmd_angular (std::to_string(cmd_vel.angular.z)); 
+        std::string ref_angular (std::to_string(ref_vel.angular.z)); 
 
         visualization_msgs::Marker obstacle_marker; 
 
-        obstacle_marker.header.frame_id = "mag250_tf/base_link"; 
+        obstacle_marker.header.frame_id = pp_config.robot_type+ "_tf/base_link";
         obstacle_marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING; 
         // obstacle_marker.type = obstacle_marker.ADD;
 
@@ -197,7 +200,7 @@ namespace pp_local_planner {
         obstacle_marker.color.b = 255;
         obstacle_marker.color.a = 1;
 
-        obstacle_marker.text = "Linear vel: " + linear + ", " + "Angular vel: " + angular;
+        obstacle_marker.text = "RL: " + ref_linear + "," + "CL: " + cmd_linear + ", " + "RW: " + ref_angular + "," + "CW: " + cmd_angular;
 
         obstacle_marker.lifetime = ros::Duration(15); 						
         visualise_pub.publish(obstacle_marker);
@@ -332,7 +335,6 @@ namespace pp_local_planner {
         {
             dynamic_lookahead = pp_config.max_lookahead;
         }
-        ROS_INFO("Dynamic lookeahd is %f, %f", dynamic_lookahead, robot_vel.linear.x); 
         return dynamic_lookahead;
     }
 

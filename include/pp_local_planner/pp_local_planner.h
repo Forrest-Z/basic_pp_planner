@@ -93,7 +93,7 @@ namespace pp_local_planner {
             bool setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan);
             bool ppUpdate(const tf::TransformListener* tf, const geometry_msgs::PoseStamped& global_pose, std::vector<geometry_msgs::Point> footprint_spec, const geometry_msgs::Twist& robot_vel, std::vector<geometry_msgs::PoseStamped>& local_plan, geometry_msgs::Twist& cmd_vel);
             bool isGoalReached(const geometry_msgs::PoseStamped& robot_pose);
-            void publishVisualization(const geometry_msgs::Twist& cmd_vel);     
+            void publishVisualization(const geometry_msgs::Twist& cmd_vel, const geometry_msgs::Twist& ref_vel);     
 
         private:
 

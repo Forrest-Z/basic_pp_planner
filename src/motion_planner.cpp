@@ -290,7 +290,8 @@ namespace motion_planner
                 //issues.
                 if(inPlace(global_pose, temp_pose, xy_goal_tolerance_, config.yaw_goal_tolerance, yaw_dif) && (mpd::euclidean(*plan_it, *std::next(plan_it, 1)) < 0.001))
                 {
-                    mp.pose = temp_pose;
+                    mp.pose = temp_pose; //this pose is wrong sometimes
+                    //mp.pose = *plan_it;
                     mp.visited_count = pose_count;
                     mp.obstacle = false;
                     mp.in_place = true;
@@ -309,6 +310,7 @@ namespace motion_planner
                     {
                         mp.twist_ref.linear.x = 0.0;
                         mp.twist_ref.angular.z = 0.0;
+                        //mp.pose = *plan_it;
                         motion_plan.push_back(mp);
                         //break;
                     }
@@ -429,11 +431,10 @@ namespace motion_planner
         }*/
 
         auto min_vel_mp = std::min_element(ramp_plan.begin(), ramp_plan.end(), [](const mpd::MotionPose& mp1, const mpd::MotionPose& mp2) {return mp1.twist_ref.linear.x <= mp2.twist_ref.linear.x;});
-        
 
         double euclid_to_minpose = mpd::euclidean(global_pose, min_vel_mp->pose);
         ref_pose_ = min_vel_mp->pose;
-        // ref_pose_pub.publish(ref_pose_);
+        //ref_pose_pub.publish(ref_pose_);
 
         if (list_of_ref_poses.size() < 2)
         {
@@ -515,13 +516,13 @@ namespace motion_planner
             //     ROS_INFO("[motion_planner.cpp] : setting to 0.1");
             //     final_vel_x = 0.10;
                 
-            if (min_vel_mp -> twist_ref.linear.x < 0.001)
+            if (min_vel_mp -> twist_ref.linear.x < 0.001) 
             {
-                if (mpd::euclidean(global_pose, min_vel_mp->pose)  < 0.20)
+                if ((mpd::euclidean(global_pose, min_vel_mp->pose)  < 0.20) || (position < 0.20)) 
                 {
                     final_vel_x = 0.05;
                 }
-                else if (mpd::euclidean(global_pose, min_vel_mp->pose) >= 0.20 && mpd::euclidean(global_pose, min_vel_mp->pose) < 0.60)
+                else if ((mpd::euclidean(global_pose, min_vel_mp->pose) >= 0.20 && mpd::euclidean(global_pose, min_vel_mp->pose) < 0.60) || (position >= 0.20 && position < 0.60))
                 {
                     final_vel_x = 0.10;
                 }
