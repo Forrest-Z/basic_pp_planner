@@ -290,7 +290,10 @@ namespace motion_planner
                 //issues.
                 if(inPlace(global_pose, temp_pose, xy_goal_tolerance_, config.yaw_goal_tolerance, yaw_dif) && (mpd::euclidean(*plan_it, *std::next(plan_it, 1)) < 0.001))
                 {
-                    mp.pose = temp_pose; //this pose is wrong sometimes
+                    //this pose is wrong sometimes, need to be fixed
+                    //this is causing issue in the calculation final velocity
+                    //when robot close to goal.
+                    mp.pose = temp_pose;
                     //mp.pose = *plan_it;
                     mp.visited_count = pose_count;
                     mp.obstacle = false;
@@ -794,6 +797,7 @@ namespace motion_planner
         config.yaw_goal_tolerance = 0.05;
         config.safety_acc_x = 0.5;
         max_xy_tolerance = 0.2;
+        xy_goal_tolerance_ = 0.05;
         max_yaw_goal_tolerance = 0.2;
         last_control_v = 0.0;
         last_control_w = 0.0;
