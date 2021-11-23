@@ -1,0 +1,63 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "",
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/home/skpro19/botsync_ws/devel/include/**",
+                "/home/skpro19/catkin_ws/devel/include/**",
+                "/opt/ros/melodic/include/**",
+                "/home/skpro19/catkin_ws/src/actionlib/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/amcl/include/**",
+                "/home/skpro19/botsync_ws/src/bagfile_manager/bag_recorder/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/base_local_planner/include/**",
+                "/home/skpro19/catkin_ws/src/bot_mapper/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/carrot_planner/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/clear_costmap_recovery/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/costmap_2d/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/dwa_local_planner/include/**",
+                "/home/skpro19/botsync_ws/src/geometry/eigen_conversions/include/**",
+                "/home/skpro19/catkin_ws/src/m-explore/explore/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/global_planner/include/**",
+                "/home/skpro19/catkin_ws/src/husky/husky_base/include/**",
+                "/home/skpro19/botsync_ws/src/geometry/kdl_conversions/include/**",
+                "/home/skpro19/botsync_ws/src/laser_line_extraction/include/**",
+                "/home/skpro19/botsync_ws/src/mag/mag_base/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/map_server/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/move_base/move_base/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/move_slow_and_clear/include/**",
+                "/home/skpro19/catkin_ws/src/my_explore_lite/include/**",
+                "/home/skpro19/catkin_ws/src/my_global_planner/include/**",
+                "/home/skpro19/catkin_ws/src/my_local_planner/include/**",
+                "/home/skpro19/catkin_ws/src/my_particle_filter/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/nav_core/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/navfn/include/**",
+                "/home/skpro19/botsync_ws/src/obstacle_detector/include/**",
+                "/home/skpro19/botsync_ws/src/path_generator/include/**",
+                "/home/skpro19/botsync_ws/src/path_generator_plugin/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/pp_local_planner/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/robot_pose_ekf/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/rotate_recovery/include/**",
+                "/home/skpro19/botsync_ws/src/sbpl_lattice_planner/include/**",
+                "/home/skpro19/botsync_ws/src/geometry/tf/include/**",
+                "/home/skpro19/botsync_ws/src/geometry2/tf2/include/**",
+                "/home/skpro19/botsync_ws/src/geometry2/tf2_bullet/include/**",
+                "/home/skpro19/botsync_ws/src/geometry2/tf2_eigen/include/**",
+                "/home/skpro19/botsync_ws/src/geometry2/tf2_geometry_msgs/include/**",
+                "/home/skpro19/botsync_ws/src/geometry2/tf2_kdl/include/**",
+                "/home/skpro19/botsync_ws/src/geometry2/tf2_msgs/include/**",
+                "/home/skpro19/botsync_ws/src/geometry2/tf2_ros/include/**",
+                "/home/skpro19/botsync_ws/src/geometry2/tf2_sensor_msgs/include/**",
+                "/home/skpro19/botsync_ws/src/geometry/tf_conversions/include/**",
+                "/home/skpro19/catkin_ws/src/turtlebot3_simulations/turtlebot3_gazebo/include/**",
+                "/home/skpro19/botsync_ws/src/navigation/voxel_grid/include/**",
+                "/usr/include/**"
+            ],
+            "name": "ROS",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/skpro19/botsync_ws/src/navigation/pp_local_planner/build/devel/setup.sh
