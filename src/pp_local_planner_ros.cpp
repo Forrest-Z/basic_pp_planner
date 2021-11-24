@@ -34,7 +34,8 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
             
             ros::NodeHandle private_nh_("~" + name);
 
-            global_plan_pub_ =  private_nh_.advertise<nav_msgs::Path>("global_plan_", 1000, true);        
+            global_plan_pub_ =  private_nh_.advertise<nav_msgs::Path>("global_plan_", 1000, true);   
+            look_ahead_point_pub = private_nh_.advertise<geometry_msgs::PoseStamped>("lookahead_pose", 1000, true);     
     
 
             planner_util_.initialize(tf, costmap_, costmap_ros_->getGlobalFrameID());
@@ -47,6 +48,65 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
 
         }
 
+
+        bool PPLocalPlannerROS::update_next_look_ahead_point(geometry_msgs::PoseStamped &next_look_ahead_pose_){
+
+            tf::poseStampedTFToMsg(global_pose_tf_, global_pose_);
+
+            for(auto it_ = transformed_plan_.begin(); it_ != transformed_plan_.end(); ++it_){
+
+                double dis_from_robot_pose_ = euclidean(*it_, global_pose_);
+
+                if(dis_from_robot_pose_ > look_ahead_dis_) {
+                    
+                    geometry_msgs::PoseStamped curr_path_pt = *it_;
+                    next_look_ahead_pose_ = *it_;
+                    look_ahead_point_pub.publish(next_look_ahead_pose_);
+                    return true;
+
+                }
+
+            }
+
+            ROS_ERROR("Could not find the next look-ahead point!\n");
+
+            return false;
+
+
+        }
+
+        bool PPLocalPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
+
+            if(!costmap_ros_->getRobotPose(global_pose_tf_)) {
+
+                ROS_ERROR("Could not get robot pose!\n");
+                return false;
+            }
+
+            if(!planner_util_.getLocalPlan(global_pose_tf_, transformed_plan_)) { 
+
+                ROS_ERROR("planner_util_ could not find transformed_plan_!\n"); 
+                return false;
+
+            }
+
+            base_local_planner::publishPlan(transformed_plan_, global_plan_pub_);
+
+            geometry_msgs::PoseStamped next_look_ahead_pose_;
+            bool flag_ = update_next_look_ahead_point(next_look_ahead_pose_);
+
+            if(!flag_) {
+                
+                ROS_ERROR("Could not find the next look ahead pose!\n");
+                return false;
+            }
+
+            ROS_WARN("Inside the computeVelocityCommand function!\n");
+            cmd_vel.angular.z = 1;
+            return true;
+
+}
+       
         bool PPLocalPlannerROS::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan) {
 
             if(!initialized_) {
@@ -68,38 +128,11 @@ PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalP
 
         }
 
-        bool PPLocalPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
-
-            if(!costmap_ros_->getRobotPose(global_pose_tf_)) {
-
-                ROS_ERROR("Could not get robot pose!\n");
-                return false;
-            }
-
-
-            tf::poseStampedTFToMsg(global_pose_tf_, global_pose_);
-            std::vector<geometry_msgs::PoseStamped> transformed_plan_;
-
-
-
-            if(!planner_util_.getLocalPlan(global_pose_tf_, transformed_plan_)) { 
-
-                ROS_ERROR("planner_util_ could not find transformed_plan_!\n"); 
-                return false;
-
-            }
-
-            base_local_planner::publishPlan(transformed_plan_, global_plan_pub_);
-                    
-            ROS_WARN("Inside the computeVelocityCommand function!\n");
-            cmd_vel.angular.z = 1;
-            return true;
-
-}
+        
         bool PPLocalPlannerROS::isGoalReached() {
             
             
-            //ROS_WARN("Returning false from the isGoalReached function!\n");
+            ROS_WARN("Returning false from the isGoalReached function!\n");
             
             return false;
 
