@@ -47,44 +47,25 @@ namespace pp_local_planner {
             void setLoadedState(bool isloaded);
 
         private:
-
             
-            bool update_next_look_ahead_point(geometry_msgs::PoseStamped &next_look_ahead_pose_ );
-            void get_angular_velocity_command(const geometry_msgs::PoseStamped &next_look_ahead_pose, double &w_);
-            bool get_global_goal_(geometry_msgs::PoseStamped &goal_pt);
-
-
-        //inline functions  
-
-            inline double euclidean(const geometry_msgs::PoseStamped& pose1, const geometry_msgs::PoseStamped& pose2){
-                return (sqrt(pow(pose1.pose.position.x - pose2.pose.position.x, 2) + pow(pose1.pose.position.y -
-                        pose2.pose.position.y, 2)));
-            }
             
             costmap_2d::Costmap2DROS* costmap_ros_;
             costmap_2d::Costmap2D* costmap_;
             tf::TransformListener* tf_;
             bool initialized_;         
             
-            //Params for launch file
-            std::string odom_topic_ = "/bi/mag_base_controller/odom";
-            
-            //Tuning params
-            double look_ahead_dis_ = 1;
-
-            //std::vector<geometry_msgs::PoseStamped>& global_plan_;
-
+           
             base_local_planner::LocalPlannerUtil planner_util_;
             base_local_planner::LatchedStopRotateController latchedStopRotateController_;
-            ros::Publisher global_plan_pub_, look_ahead_point_pub, global_pose_pub_, global_goal_pub_ ;
-            std::vector<geometry_msgs::PoseStamped> global_plan_, orig_global_plan_;
-
-            geometry_msgs::PoseStamped global_pose_;
+            
+            geometry_msgs::PoseStamped global_pose_; 
             tf::Stamped<tf::Pose> global_pose_tf_;
 
-           
+            std::vector<geometry_msgs::PoseStamped> global_plan_;
 
-        
+            ros::Publisher circle_pub_, global_plan_pub_, point_pub_;
+            ros::NodeHandle nh_;
+
     };
 
 };
