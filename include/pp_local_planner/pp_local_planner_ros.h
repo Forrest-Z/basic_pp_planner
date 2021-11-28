@@ -63,7 +63,7 @@ namespace pp_local_planner {
 
             std::vector<geometry_msgs::PoseStamped> global_plan_;
 
-            ros::Publisher circle_pub_, global_plan_pub_, point_pub_;
+            ros::Publisher circle_pub_, global_plan_pub_, point_pub_, unfilled_circle_pub_;
             ros::NodeHandle nh_;
 
     };

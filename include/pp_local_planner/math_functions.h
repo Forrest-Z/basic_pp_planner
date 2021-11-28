@@ -83,19 +83,17 @@ namespace math_functions{
         if (circumcenter.first == FLT_MAX &&
             circumcenter.second == FLT_MAX)
         {
-            cout << "The two perpendicular bisectors "
-                    "found come parallel" << endl;
-            cout << "Thus, the given points do not form "
-                    "a triangle and are collinear" << endl;
+           // cout << "The two perpendicular bisectors "         "found come parallel" << endl;
+            //cout << "Thus, the given points do not form ""a triangle and are collinear" << endl;
         
             return false;
         }
 
         else
         {
-            cout << "The circumcenter of the triangle PQR is: ";
-            cout << "(" << circumcenter.first << ", "
-                << circumcenter.second << ")" << endl;
+            //cout << "The circumcenter of the triangle PQR is: ";
+            //cout << "(" << circumcenter.first << ", "
+              //  << circumcenter.second << ")" << endl;
 
             centre_ = make_pair(circumcenter.first, circumcenter.second);
             return true;
