@@ -5,7 +5,6 @@
 #include <cfloat>
 #include <geometry_msgs/PoseStamped.h>
 #include <ros/ros.h>
-#include <pp_local_planner/math_functions.h>
 
 namespace geometry_functions{
 
