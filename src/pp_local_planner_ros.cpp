@@ -49,14 +49,82 @@ namespace pp_local_planner
         global_plan_pub_ = nh_.advertise<nav_msgs::Path>("global_plan", 1000, true);
         point_pub_ = nh_.advertise<visualization_msgs::Marker>("point_marker", 1000, true);
         unfilled_circle_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("unfilled_circle_markerarray_", 1000, true);
+
+        lookahead_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("closest_pose_", 1000, true);
+        closest_pt_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("lookahead_pose_", 1000, true);
+
+
+    }
+
+    bool PPLocalPlannerROS::get_closest_pt_idx_in_global_plan_(int &mn_index){
+
+        double mn_dis_ = 1000;
+        mn_index = -1;
+
+        std::pair<double, double> global_pose_; 
+        helper_functions::convert_pose_stamped_to_pair_double(global_pose_stamped_, global_pose_);
+
+
+        for(int i = 0; i < (int)global_plan_.size(); i++) {
+
+            geometry_msgs::PoseStamped stamped_pose_ = global_plan_.at(i);
+
+            std::pair<double, double> pose_ ;
+            helper_functions::convert_pose_stamped_to_pair_double(stamped_pose_, pose_);
+
+            double dis_ = geometry_functions::get_euclidean_dis(global_pose_, pose_);
+
+            if(dis_ < mn_dis_){
+
+                mn_dis_ = dis_; 
+                mn_index = i; 
+
+            }
+
+        }
+
+        if(mn_index == -1) {return false; }
+
+        return true; 
+
         
     }
 
-    
-    
-    
-   
 
+    bool PPLocalPlannerROS::get_lookahead_pt_idx_in_global_plan_(const double &la_dis_, const int &closest_pt_idx_, int &la_pt_idx){
+        
+        bool flag_ = false; 
+
+        double dis_ ;
+
+        geometry_msgs::PoseStamped closest_stamped_pose_ = global_plan_.at(closest_pt_idx_);
+        std::pair<double, double> closest_pose_; 
+        helper_functions::convert_pose_stamped_to_pair_double(closest_stamped_pose_, closest_pose_);
+
+        for(int i = closest_pt_idx_; i < (int)global_plan_.size(); i++) {
+            
+            geometry_msgs::PoseStamped stamped_pose_ = global_plan_.at(i);
+
+            std::pair<double, double> pose_; 
+
+            helper_functions::convert_pose_stamped_to_pair_double(stamped_pose_, pose_);
+
+            dis_ = geometry_functions::get_euclidean_dis(closest_pose_, pose_);
+
+            if(dis_ >= la_dis_) {
+
+                la_pt_idx = i; 
+                return true;
+
+
+            }
+
+        }
+
+        return false;
+
+    }
+    
     bool PPLocalPlannerROS::computeVelocityCommands(geometry_msgs::Twist &cmd_vel)
     {
 
@@ -69,6 +137,8 @@ namespace pp_local_planner
             return false;
         }
 
+        tf::poseStampedTFToMsg(global_pose_tf_, global_pose_stamped_);
+
         if (!planner_util_.getLocalPlan(global_pose_tf_, global_plan_))
         {
 
@@ -76,78 +146,50 @@ namespace pp_local_planner
             return false;
         }
 
+        
+
         base_local_planner::publishPlan(global_plan_, global_plan_pub_);
 
-        double mn_ = 10000, mx_ = -1;
-        int y_cnt_ =0, cc_cnt_ = 0 ;
+        int cnt_a =0, cnt_b = 0 ; 
 
-
-        for (int i = 1; i < (int)global_plan_.size() - 1; i++)
-        {
-
-
-            ROS_INFO("planner_util_.getGlobalFrameID(): %s\n", planner_util_.getGlobalFrame());
-            geometry_msgs::PoseStamped pose_a_, pose_b_, pose_c_;
+        int closest_pt_idx_; 
+        int flag_ = get_closest_pt_idx_in_global_plan_(closest_pt_idx_);
+        
+        if(!flag_) {
             
-            pose_a_ = global_plan_.at(i - 1);
-            pose_b_ = global_plan_.at(i);
-            pose_c_ = global_plan_.at(i + 1);
-
-            bool flag_;
-
-            std::pair<double, double> a_, b_, c_;
-
-            helper_functions::convert_pose_stamped_to_pair_double(pose_a_, a_); 
-            helper_functions::convert_pose_stamped_to_pair_double(pose_b_, b_); 
-            helper_functions::convert_pose_stamped_to_pair_double(pose_c_, c_); 
-            
-            double r_;
-            flag_ = geometry_functions::get_cr_(a_, b_ ,c_, r_);
-
-            if(flag_){
-                
-                std::pair<double, double> cc_; 
-
-                flag_ = geometry_functions::get_cc_(a_, b_, c_, cc_);
-                
-                
-                /*if(cc1_flag_) {
-
-                    ROS_WARN("i: %d\n", i);
-                    ROS_INFO("a_: (%f,%f) b_: (%f,%f) c_: (%f,%f)\n", a_.first, a_.second, b_.first, b_.second, c_.first, c_.second);
-                    ROS_INFO("y_: %f r_: %f cc_1_: (%f,%f)\n", y_, r_, cc_1_.first, cc_1_.second);
-
-                }*/ 
-
-                if(flag_ && r_ < 20) {
-
-                    ROS_WARN("i: %d\n", i);
-                    ROS_INFO("a_: (%f,%f) b_: (%f,%f) c_: (%f,%f)\n", a_.first, a_.second, b_.first, b_.second, c_.first, c_.second);
-                    ROS_INFO("r_: %f cc_: (%f,%f)\n", r_, cc_.first, cc_.second);
-
-                    std::pair<double, double> pt_; 
-                    helper_functions::convert_pose_stamped_to_pair_double(global_plan_.at(i), pt_);
-                    vis_functions::publish_point_(pt_, point_pub_, planner_util_, nh_);
-                    //vis_functions::publish_circle_(cc_, r_, circle_pub_, planner_util_, nh_);
-                    vis_functions::publish_unfilled_circle_(cc_, r_, unfilled_circle_pub_, planner_util_, nh_);
-
-
-                    ROS_WARN("Sleeping for 1s\n");
-                    ros::Duration(1.0).sleep();
-                } 
-                
-                mn_ = std::min(mn_, r_);
-                mx_ = std::max(mx_, r_);
-
-                
-            }
+            cnt_a++;
+            ROS_ERROR("Unable to find the closest point to the robot pose in the global plan!\n");
+            return false;
+        
         }
 
-        ROS_WARN("mx_: %f mn_: %f\n", mx_, mn_);
-        ROS_WARN("y_cnt_: %d cc_cnt_: %d\n", y_cnt_, cc_cnt_);
+        closest_pt_pub_.publish(global_plan_.at(closest_pt_idx_));
+        
+        double la_dis_ = 1.0;
+        int la_pt_idx = -1;
+
+        flag_ = get_lookahead_pt_idx_in_global_plan_(la_dis_, closest_pt_idx_, la_pt_idx);
+
+        if(!flag_) {
+            
+            cnt_b++;
+            ROS_ERROR("Unable to find a suitable lookahead pose!\n");
+            return false;
+
+        }
+
+        lookahead_pose_pub_.publish(global_plan_.at(la_pt_idx));
+        
+        ROS_WARN("cnt_a: %d cnt_b: %d\n",cnt_a, cnt_b);
+        ROS_WARN("Sleeping for 1s \n");
+        ros::Duration(1.0).sleep();
         
         return true;
     }
+
+    
+
+   
 
     bool PPLocalPlannerROS::setPlan(const std::vector<geometry_msgs::PoseStamped> &orig_global_plan)
     {

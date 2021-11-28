@@ -47,7 +47,9 @@ namespace pp_local_planner {
             void setLoadedState(bool isloaded);
 
         private:
-            
+
+            bool get_closest_pt_idx_in_global_plan_(int &mn_index);
+            bool get_lookahead_pt_idx_in_global_plan_(const double &la_dis_, const int &closest_pt_idx_, int &la_pt_idx);
             
             costmap_2d::Costmap2DROS* costmap_ros_;
             costmap_2d::Costmap2D* costmap_;
@@ -58,12 +60,14 @@ namespace pp_local_planner {
             base_local_planner::LocalPlannerUtil planner_util_;
             base_local_planner::LatchedStopRotateController latchedStopRotateController_;
             
-            geometry_msgs::PoseStamped global_pose_; 
+            geometry_msgs::PoseStamped global_pose_stamped_; 
             tf::Stamped<tf::Pose> global_pose_tf_;
 
             std::vector<geometry_msgs::PoseStamped> global_plan_;
 
             ros::Publisher circle_pub_, global_plan_pub_, point_pub_, unfilled_circle_pub_;
+            ros::Publisher closest_pt_pub_,lookahead_pose_pub_;
+            
             ros::NodeHandle nh_;
 
     };
