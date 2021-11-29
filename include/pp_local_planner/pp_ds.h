@@ -16,9 +16,15 @@ namespace pp_ds{
 
     struct Limits{
 
+
+        //Update pp_tracker_functions::initialize_limits() and print_limits()
         double v_mn_; 
         double v_mx_;
         double r_mx_;
+        double r_thresh_;
+        double la_dis_;
+
+
 
     };
 

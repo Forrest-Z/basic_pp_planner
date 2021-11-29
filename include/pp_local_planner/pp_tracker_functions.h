@@ -15,14 +15,20 @@ namespace pp_tracker_functions {
         ROS_WARN("v_mn_:%f\n", pp_limits_.v_mn_);
         ROS_WARN("v_mx_:%f\n", pp_limits_.v_mx_);
         ROS_WARN("r_mx_:%f\n", pp_limits_.r_mx_);
-
+        ROS_WARN("r_thresh_:%f\n", pp_limits_.r_thresh_);
+        ROS_WARN("la_dis_:%f\n", pp_limits_.la_dis_);
+                
     }      
 
     void initialize_pp_limits(pp_ds::Limits &pp_limits_){
+        
+        //Update print_pp_limits
+        pp_limits_.v_mn_ = 0.1; 
+        pp_limits_.v_mx_ = 1.0;
+        pp_limits_.r_mx_ = 100;
+        pp_limits_.r_thresh_ = 20;
+        pp_limits_.la_dis_ = 1.0;
 
-    pp_limits_.v_mn_ = 0.1; 
-    pp_limits_.v_mx_ = 1.0;
-    pp_limits_.r_mx_ = 100;
     }
 
     bool get_path_rad_curvature_at_index(const int &idx, double &r_, const pp_ds::Plan_ &global_plan_)
@@ -57,7 +63,7 @@ namespace pp_tracker_functions {
         return flag_;
     }
 
-    bool get_lookahead_pt_idx_in_global_plan_(const double &la_dis_, const int &closest_pt_idx_, int &la_pt_idx, const pp_ds::Plan_ &global_plan_)
+    bool get_lookahead_pt_idx_in_global_plan_(const pp_ds::Limits &pp_limits_, const int &closest_pt_idx_, int &la_pt_idx, const pp_ds::Plan_ &global_plan_)
     {
 
         bool flag_ = false;
@@ -79,7 +85,7 @@ namespace pp_tracker_functions {
 
             dis_ = geometry_functions::get_euclidean_dis(closest_pose_, pose_);
 
-            if (dis_ >= la_dis_)
+            if (dis_ >= pp_limits_.la_dis_)
             {
 
                 la_pt_idx = i;
@@ -121,10 +127,10 @@ namespace pp_tracker_functions {
 
             bool flag_ = get_path_rad_curvature_at_index(i, r_, global_plan_);
 
-            if(flag_ && r_ <= 20) {
+            if(flag_ && r_ <= pp_limits_.r_thresh_) {
 
                 path_point_.r_ = r_;
-                path_point_.vx_ = (r_/pp_limits_.r_mx_) * pp_limits_.v_mx_;
+                path_point_.vx_ = std::max(pp_limits_.v_mn_, (r_/pp_limits_.r_mx_) * pp_limits_.v_mx_);
             
             }
 
@@ -176,7 +182,22 @@ namespace pp_tracker_functions {
         return true;
     }
 
-    
+    double get_lookahead_offset_from_closest_pt(const int &closest_pt_idx, const int &lookahead_pt_idx, const pp_ds::Plan_ &global_plan_){
+
+        geometry_msgs::PoseStamped closest_pose_stamped_, lookahead_pose_stamped_;
+        std::pair<double, double> closest_pose_, lookahead_pose_; 
+
+        closest_pose_stamped_ = global_plan_.at(closest_pt_idx); 
+        lookahead_pose_stamped_ = global_plan_.at(lookahead_pt_idx);
+
+        helper_functions::convert_pose_stamped_to_pair_double(closest_pose_stamped_, closest_pose_);
+        helper_functions::convert_pose_stamped_to_pair_double(lookahead_pose_stamped_, lookahead_pose_);
+
+        
+
+
+
+    }
 
     
 

@@ -61,16 +61,6 @@ namespace pp_local_planner
         pp_tracker_functions::initialize_pp_limits(pp_limits_);
         pp_tracker_functions::print_pp_limits(pp_limits_);
 
-        std::vector<pp_ds::PathPoint> path_points_;
-        pp_tracker_functions::process_global_path_points(global_plan_, path_points_, pp_limits_);
-        
-        for(int i = 0; i < (int)path_points_.size(); i++) {
-            
-            pp_ds::PathPoint pt_ = path_points_[i];
-
-            ROS_INFO("i: %d s_pose_: (%f,%f) pose_: (%f,%f) r_: %f vx_: %f\n", i, pt_.stamped_pose_.pose.position.x, pt_.stamped_pose_.pose.position.y, pt_.pose_.first, pt_.pose_.second, pt_.r_, pt_.vx_);
-        
-        }
         
         
         initialized_ = true;
@@ -79,6 +69,7 @@ namespace pp_local_planner
 
     
     }
+
 
     
     
@@ -107,8 +98,33 @@ namespace pp_local_planner
         base_local_planner::publishPlan(global_plan_, global_plan_pub_);
 
 
+        int closest_pt_idx_, la_pt_idx;
 
+        bool flag_; 
+
+        flag_ = pp_tracker_functions::get_closest_pt_idx_in_global_plan_(closest_pt_idx_, global_pose_stamped_, global_plan_);
+
+        if(!flag_) {
+
+            ROS_ERROR("Unable to find the closest_pt_idx in the global_plan_!\n");
+            return false;
+
+        }
+
+        flag_ = pp_tracker_functions::get_lookahead_pt_idx_in_global_plan_(pp_limits_, closest_pt_idx_, la_pt_idx, global_plan_);
+
+        if(!flag_) {
+
+            ROS_ERROR("Unable to find a suitable lookahead point!\n");
+            return false;
+
+        }
+
+        lookahead_pose_pub_.publish(global_plan_.at(la_pt_idx));
+        closest_pt_pub_.publish(global_plan_.at(closest_pt_idx_));
+        
         return true;
+    
     }
 
     bool PPLocalPlannerROS::setPlan(const std::vector<geometry_msgs::PoseStamped> &orig_global_plan)

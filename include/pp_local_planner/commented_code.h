@@ -89,3 +89,18 @@
         
         return true;
     }*/
+
+     /*std::vector<pp_ds::PathPoint> path_points_;
+        pp_tracker_functions::process_global_path_points(global_plan_, path_points_, pp_limits_);
+        
+        for(int i = 0; i < (int)path_points_.size(); i++) {
+            
+            pp_ds::PathPoint pt_ = path_points_[i];
+
+            ROS_INFO("i: %d s_pose_: (%f,%f) pose_: (%f,%f) r_: %f vx_: %f\n", i, pt_.stamped_pose_.pose.position.x, pt_.stamped_pose_.pose.position.y, pt_.pose_.first, pt_.pose_.second, pt_.r_, pt_.vx_);
+        
+        }
+    
+        ROS_WARN("Sleeping for 10s!\n");
+        ros::Duration(10.0).sleep();
+    */
