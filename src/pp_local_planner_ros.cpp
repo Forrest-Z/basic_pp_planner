@@ -6,6 +6,8 @@
 #include <pp_local_planner/vis_functions.h>
 #include <pp_local_planner/helper_functions.h>
 #include <pp_local_planner/geometry_functions.h>
+#include <pp_local_planner/tracker_functions.h>
+
 #include <ros/console.h>
 
 #include <pluginlib/class_list_macros.h>
@@ -45,13 +47,13 @@ namespace pp_local_planner
 
         initialized_ = true;
 
-        circle_pub_ = nh_.advertise<visualization_msgs::Marker>("circle_marker", 1000, true);
         global_plan_pub_ = nh_.advertise<nav_msgs::Path>("global_plan", 1000, true);
+        
         point_pub_ = nh_.advertise<visualization_msgs::Marker>("point_marker", 1000, true);
         unfilled_circle_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("unfilled_circle_markerarray_", 1000, true);
 
-        lookahead_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("closest_pose_", 1000, true);
-        closest_pt_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("lookahead_pose_", 1000, true);
+        lookahead_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("lookahed_pose_", 1000, true);
+        closest_pt_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("closest_pose_", 1000, true);
 
 
     }
@@ -124,7 +126,82 @@ namespace pp_local_planner
         return false;
 
     }
-    
+
+    bool PPLocalPlannerROS::get_path_curvature_at_index(const int &idx, double &r_){
+
+        int len_ = (int)global_plan_.size(); 
+
+        if (idx == 0) {return false; }
+
+        if(idx == (int)global_plan_.size() - 1) {return false;}
+
+        geometry_msgs::PoseStamped pose_a_, pose_b_, pose_c_;
+            
+        pose_a_ = global_plan_.at(idx - 1);
+        pose_b_ = global_plan_.at(idx);
+        pose_c_ = global_plan_.at(idx + 1);
+
+            
+        std::pair<double, double> a_, b_, c_;
+
+        helper_functions::convert_pose_stamped_to_pair_double(pose_a_, a_); 
+        helper_functions::convert_pose_stamped_to_pair_double(pose_b_, b_); 
+        helper_functions::convert_pose_stamped_to_pair_double(pose_c_, c_); 
+            
+        
+        bool flag_ = geometry_functions::get_cr_(a_, b_ ,c_, r_);
+
+        return flag_;
+
+
+    }
+
+    void PPLocalPlannerROS::process_global_path_points_(std::vector<tracker_functions::PathPoint> &path_points_){
+
+        helper_functions::convert_pose_stamped_to_pair_double(global_pose_stamped_, global_pose_);
+
+        int sz_ = (int)global_plan_.size(); 
+
+        if(sz_ < 3) {
+
+            ROS_WARN("The size of global_plan_ < 3 -- Something might be wrong!\n");
+
+        }
+
+        for(int i  =0 ; i< (int)global_plan_.size(); i++) {
+
+            double r_, dis_; 
+            bool flag_;
+            int idx = -1;
+            
+            if(i == 0) {idx = i + 1; }
+            
+            else if(i == (int)global_plan_.size() - 1) {idx = i - 1; }
+            
+            else {idx = i ;}
+
+
+            flag_ = get_path_curvature_at_index(idx, r_);
+            
+            if(!flag_) {r_ = -1;}
+
+            geometry_msgs::PoseStamped pose_stamped_ = global_plan_.at(i); 
+            std::pair<double, double> pose_; 
+
+            helper_functions::convert_pose_stamped_to_pair_double(pose_stamped_, pose_);    
+
+            dis_ = geometry_functions::get_euclidean_dis(global_pose_, pose_);
+
+            tracker_functions::PathPoint path_pt = {pose_stamped_, pose_, dis_, r_};
+
+            path_points_.push_back(path_pt);
+
+
+        }
+
+z`
+    }
+
     bool PPLocalPlannerROS::computeVelocityCommands(geometry_msgs::Twist &cmd_vel)
     {
 
@@ -150,7 +227,11 @@ namespace pp_local_planner
 
         base_local_planner::publishPlan(global_plan_, global_plan_pub_);
 
-        int cnt_a =0, cnt_b = 0 ; 
+        std::vector<tracker_functions::path_point> path_points_;
+
+        helper_functions::convert_pose_stamped_to_pair_double(global_pose_stamped_, global_pose_);
+
+        /*int cnt_a =0, cnt_b = 0 ; 
 
         int closest_pt_idx_; 
         int flag_ = get_closest_pt_idx_in_global_plan_(closest_pt_idx_);
@@ -163,9 +244,12 @@ namespace pp_local_planner
         
         }
 
+        ROS_WARN("closest_pt_index: %d\n", closest_pt_idx_);
+
+
         closest_pt_pub_.publish(global_plan_.at(closest_pt_idx_));
         
-        double la_dis_ = 1.0;
+        double la_dis_ = 2.0;
         int la_pt_idx = -1;
 
         flag_ = get_lookahead_pt_idx_in_global_plan_(la_dis_, closest_pt_idx_, la_pt_idx);
@@ -183,7 +267,9 @@ namespace pp_local_planner
         ROS_WARN("cnt_a: %d cnt_b: %d\n",cnt_a, cnt_b);
         ROS_WARN("Sleeping for 1s \n");
         ros::Duration(1.0).sleep();
-        
+        */
+
+
         return true;
     }
 
