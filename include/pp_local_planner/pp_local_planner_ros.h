@@ -20,7 +20,8 @@
 
 #include <tf/transform_listener.h>
 
-
+#include <pp_local_planner/vis_functions.h>
+#include <pp_local_planner/pp_tracker_functions.h>
 
 
 namespace pp_local_planner {
@@ -48,19 +49,17 @@ namespace pp_local_planner {
 
         private:
 
+
+            void advertise_publishers();
             
-
-            bool get_closest_pt_idx_in_global_plan_(int &mn_index);
-            bool get_lookahead_pt_idx_in_global_plan_(const double &la_dis_, const int &closest_pt_idx_, int &la_pt_idx);
-            void process_global_path_points_(std::vector<tracker_functions::PathPoint> &path_points_);
-            bool get_path_curvature_at_index(const int &idx, double &r_);
-
             costmap_2d::Costmap2DROS* costmap_ros_;
             costmap_2d::Costmap2D* costmap_;
             tf::TransformListener* tf_;
             bool initialized_;         
             
-           
+
+
+
             base_local_planner::LocalPlannerUtil planner_util_;
             base_local_planner::LatchedStopRotateController latchedStopRotateController_;
             
@@ -72,8 +71,10 @@ namespace pp_local_planner {
 
             ros::Publisher global_plan_pub_, point_pub_, unfilled_circle_pub_;
             ros::Publisher closest_pt_pub_,lookahead_pose_pub_;
-            
+
             ros::NodeHandle nh_;
+
+            pp_ds::Limits pp_limits_;
 
     };
 
