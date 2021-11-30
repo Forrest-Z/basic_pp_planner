@@ -2,6 +2,7 @@
 #define VIS_FUNCTIONS
 
 #include <ros/ros.h>
+#include <pp_local_planner/pp_ds.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <base_local_planner/local_planner_util.h>
@@ -123,7 +124,9 @@ namespace vis_functions{
             point_pub_.publish(marker);
     }
 
-    void visualize_crosstrack_error_at_idx(const int &closest_pt_idx, const pp_ds, const double &la_dis_, const double &alpha_, ros::Publisher &crosstrack_error_pub_, base_local_planner::LocalPlannerUtil &planner_util_, ros::NodeHandle &nh_){
+    void publish_la_pose_line();
+
+    void publish_ct_error_line(const int &closest_pt_idx, const pp_ds::Plan_ &global_plan_, const double &la_dis_, const double &alpha_, ros::Publisher &crosstrack_error_pub_, base_local_planner::LocalPlannerUtil &planner_util_, ros::NodeHandle &nh_){
         
         visualization_msgs::MarkerArray marker_array;
             
@@ -136,12 +139,12 @@ namespace vis_functions{
                 
                 visualization_msgs::Marker marker;
 
-                double x_ = closest_pose_.first +  len_ * cos(alpha_); 
-                double y_ = closest_pose_.second  + len_ * sin(alpha_);
+                double y_ = closest_pose_.first +  la_dis_ * cos(alpha_); 
+                double x_ = closest_pose_.second  + len_ * sin(alpha_);
 
                 std::pair<double, double> pt_ = {x_, y_};
 
-                visualization_msgs::Marker marker;
+                
 
                 marker.header.frame_id = planner_util_.getGlobalFrame();
                 marker.header.stamp = ros::Time();

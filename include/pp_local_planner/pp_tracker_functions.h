@@ -4,8 +4,8 @@
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <pp_local_planner/helper_functions.h>
-#include <pp_local_planner/pp_ds.h>
 #include <pp_local_planner/geometry_functions.h>
+#include <pp_local_planner/pp_ds.h>
 
 namespace pp_tracker_functions {
 
@@ -27,7 +27,7 @@ namespace pp_tracker_functions {
         pp_limits_.v_mx_ = 1.0;
         pp_limits_.r_mx_ = 100;
         pp_limits_.r_thresh_ = 20;
-        pp_limits_.la_dis_ = 1.0;
+        pp_limits_.la_dis_ = 3.0;
 
     }
 
@@ -182,7 +182,7 @@ namespace pp_tracker_functions {
         return true;
     }
 
-    double get_cross_track_error_(const int &closest_pt_idx, const int &la_pt_idx, const pp_ds::Plan_ &global_plan_){
+    void get_cross_track_error_(const int &closest_pt_idx, const int &la_pt_idx, const pp_ds::Plan_ &global_plan_, double &e_, double &alpha_){
 
         geometry_msgs::PoseStamped closest_pose_stamped_, la_pose_stamped_;
         std::pair<double, double> closest_pose_, la_pose_; 
@@ -193,9 +193,9 @@ namespace pp_tracker_functions {
         helper_functions::convert_pose_stamped_to_pair_double(closest_pose_stamped_, closest_pose_);
         helper_functions::convert_pose_stamped_to_pair_double(la_pose_stamped_, la_pose_);
 
-        double heading_, la_theta_, alpha_;
+        double heading_, la_theta_;
         double dx_, dy_; 
-        double e_, la_dis_;
+        double la_dis_;
 
         la_dis_ = geometry_functions::get_euclidean_dis(closest_pose_, la_pose_);
 
@@ -215,7 +215,7 @@ namespace pp_tracker_functions {
 
         e_ = la_dis_ * sin(alpha_);         
 
-        return e_;
+        //return e_;
 
     }
 

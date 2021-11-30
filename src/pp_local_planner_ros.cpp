@@ -11,7 +11,7 @@
 #include <base_local_planner/goal_functions.h>
 #include <nav_msgs/Path.h>
 #include <tf2/utils.h>
-#include <visualization_msgs/Marker.h>
+
 
 PLUGINLIB_EXPORT_CLASS(pp_local_planner::PPLocalPlannerROS, nav_core::BaseLocalPlanner)
 
@@ -32,7 +32,7 @@ namespace pp_local_planner
 
         lookahead_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("lookahed_pose_", 1000, true);
         closest_pt_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("closest_pose_", 1000, true);
-        crosstrack_error_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("crossstrack_error", 1000, true);
+        ct_error_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("crossstrack_error", 1000, true);
     
     }
 
@@ -66,9 +66,6 @@ namespace pp_local_planner
         
         initialized_ = true;
 
-        
-
-    
     }
 
 
@@ -123,6 +120,12 @@ namespace pp_local_planner
 
         lookahead_pose_pub_.publish(global_plan_.at(la_pt_idx));
         closest_pt_pub_.publish(global_plan_.at(closest_pt_idx_));
+
+
+        double e_, alpha_;  
+        pp_tracker_functions::get_cross_track_error_(closest_pt_idx_, la_pt_idx, global_plan_, e_, alpha_);
+
+        vis_functions::publish_ct_error_line(closest_pt_idx_, global_plan_, pp_limits_.la_dis_, alpha_, ct_error_pub_, planner_util_, nh_);
         
         return true;
     

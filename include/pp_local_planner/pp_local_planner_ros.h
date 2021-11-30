@@ -70,7 +70,7 @@ namespace pp_local_planner {
             std::vector<geometry_msgs::PoseStamped> global_plan_;
 
             ros::Publisher global_plan_pub_, point_pub_, unfilled_circle_pub_;
-            ros::Publisher closest_pt_pub_,lookahead_pose_pub_, crosstrack_error_pub_;
+            ros::Publisher closest_pt_pub_,lookahead_pose_pub_, ct_error_pub_;
 
             ros::NodeHandle nh_;
 

@@ -1,3 +1,7 @@
+#ifndef PP_DS
+#define PP_DS
+
+
 #include <geometry_msgs/PoseStamped.h>
 
 namespace pp_ds{
@@ -29,3 +33,5 @@ namespace pp_ds{
     };
 
 };
+
+#endif
