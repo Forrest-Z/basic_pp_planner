@@ -182,20 +182,40 @@ namespace pp_tracker_functions {
         return true;
     }
 
-    double get_lookahead_offset_from_closest_pt(const int &closest_pt_idx, const int &lookahead_pt_idx, const pp_ds::Plan_ &global_plan_){
+    double get_cross_track_error_(const int &closest_pt_idx, const int &la_pt_idx, const pp_ds::Plan_ &global_plan_){
 
-        geometry_msgs::PoseStamped closest_pose_stamped_, lookahead_pose_stamped_;
-        std::pair<double, double> closest_pose_, lookahead_pose_; 
+        geometry_msgs::PoseStamped closest_pose_stamped_, la_pose_stamped_;
+        std::pair<double, double> closest_pose_, la_pose_; 
 
         closest_pose_stamped_ = global_plan_.at(closest_pt_idx); 
-        lookahead_pose_stamped_ = global_plan_.at(lookahead_pt_idx);
+        la_pose_stamped_ = global_plan_.at(la_pt_idx);
 
         helper_functions::convert_pose_stamped_to_pair_double(closest_pose_stamped_, closest_pose_);
-        helper_functions::convert_pose_stamped_to_pair_double(lookahead_pose_stamped_, lookahead_pose_);
+        helper_functions::convert_pose_stamped_to_pair_double(la_pose_stamped_, la_pose_);
 
-        
+        double heading_, la_theta_, alpha_;
+        double dx_, dy_; 
+        double e_, la_dis_;
+
+        la_dis_ = geometry_functions::get_euclidean_dis(closest_pose_, la_pose_);
+
+        heading_ = tf::getYaw(closest_pose_stamped_.pose.orientation);
+
+        dx_ = (la_pose_.first  - closest_pose_.first);
+        dy_ = (la_pose_.second - closest_pose_.second);
+
+        if(dx_ == 0){la_theta_ == 1.57; }
+
+        else { la_theta_ = atan2(dy_, dx_) ; }
 
 
+        ROS_WARN("la_theta_: %f\n", la_theta_);
+
+        double alpha_ = la_theta_ - heading_;
+
+        double e_ = la_dis_ * sin(alpha_);         
+
+        return e_;
 
     }
 
