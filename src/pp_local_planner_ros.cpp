@@ -32,7 +32,8 @@ namespace pp_local_planner
 
         lookahead_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("lookahed_pose_", 1000, true);
         closest_pt_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("closest_pose_", 1000, true);
-
+        crosstrack_error_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("crossstrack_error", 1000, true);
+    
     }
 
 

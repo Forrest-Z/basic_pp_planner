@@ -211,9 +211,9 @@ namespace pp_tracker_functions {
 
         ROS_WARN("la_theta_: %f\n", la_theta_);
 
-        double alpha_ = la_theta_ - heading_;
+        alpha_ = la_theta_ - heading_;
 
-        double e_ = la_dis_ * sin(alpha_);         
+        e_ = la_dis_ * sin(alpha_);         
 
         return e_;
 
