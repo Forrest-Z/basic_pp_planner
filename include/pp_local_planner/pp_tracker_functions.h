@@ -27,7 +27,7 @@ namespace pp_tracker_functions {
         pp_limits_.v_mx_ = 1.0;
         pp_limits_.r_mx_ = 100;
         pp_limits_.r_thresh_ = 20;
-        pp_limits_.la_dis_ = 3.0;
+        pp_limits_.la_dis_ = 1.5;
 
     }
 

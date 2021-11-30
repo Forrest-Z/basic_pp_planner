@@ -33,7 +33,8 @@ namespace pp_local_planner
         lookahead_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("lookahed_pose_", 1000, true);
         closest_pt_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("closest_pose_", 1000, true);
         ct_error_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("crossstrack_error", 1000, true);
-    
+        la_pt_line_pub= nh_.advertise<visualization_msgs::MarkerArray>("la_pt_line", 1000, true);
+
     }
 
 
@@ -125,8 +126,10 @@ namespace pp_local_planner
         double e_, alpha_;  
         pp_tracker_functions::get_cross_track_error_(closest_pt_idx_, la_pt_idx, global_plan_, e_, alpha_);
 
-        vis_functions::publish_ct_error_line(closest_pt_idx_, global_plan_, pp_limits_.la_dis_, alpha_, ct_error_pub_, planner_util_, nh_);
+        //vis_functions::publish_ct_error_line(closest_pt_idx_, global_plan_, pp_limits_.la_dis_, alpha_, ct_error_pub_, planner_util_, nh_);
         
+        vis_functions::publish_la_point_line(closest_pt_idx_, la_pt_idx, global_plan_, la_pt_line_pub, planner_util_, nh_);
+
         return true;
     
     }
