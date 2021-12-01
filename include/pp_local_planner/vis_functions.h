@@ -183,7 +183,7 @@ namespace vis_functions{
 
                 marker.pose.position.x = x_;
                 marker.pose.position.y = y_;
-                marker.pose.position.z = 1;
+                marker.pose.position.z = 0;
 
                 marker.pose.orientation.x = 0.0;
                 marker.pose.orientation.y = 0.0;
@@ -219,6 +219,8 @@ namespace vis_functions{
         
         geometry_msgs::PoseStamped closest_stamped_pose_ = global_plan_.at(closest_pt_idx);
         std::pair<double,double> closest_pose_ = {closest_stamped_pose_.pose.position.x, closest_stamped_pose_.pose.position.y};
+
+        
 
         for(double len_ = 0; len_ <= la_dis_ ; len_ += 0.1){
                 

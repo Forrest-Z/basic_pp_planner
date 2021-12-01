@@ -14,6 +14,26 @@ namespace geometry_functions{
         double dis = sqrt(pow(a_.first - b_.first, 2) + pow(a_.second - b_.second, 2));
     }
 
+    std::tuple<double, double, double> get_line_cofficients_from_points(const std::pair<double, double> &pt1_, const std::pair<double, double> &pt2_){
+
+        double x1_ = pt1_.first, x2_ = pt2_.first; 
+        double y1_ = pt1_.second, y2_ = pt2_.second;
+
+        double m_, c_;
+
+        double dx_ = (x2_ - x1_); 
+        double dy_ = (y2_ - y1_);
+
+        if(dy_ == 0) {m_ = 0 ;}
+
+        else  if(dx_ == 0) {m_ = std::numeric_limits<double>::infinity ;}
+
+        else {m_ = (dy_/dx_);}
+
+        
+        return std::make_tuple(a_,b_,c_);
+
+    }
 
     bool get_cr_(const std::pair<double, double> &a_, const std::pair<double, double> &b_, const std::pair<double, double> &c_, double &r_){
 
