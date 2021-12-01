@@ -211,27 +211,38 @@ namespace vis_functions{
     }
 
 
-    void publish_ct_error_line(const int &closest_pt_idx, const pp_ds::Plan_ &global_plan_, const double &la_dis_, const double &alpha_, ros::Publisher &crosstrack_error_pub_, base_local_planner::LocalPlannerUtil &planner_util_, ros::NodeHandle &nh_){
+    void publish_ct_error_line(const int &la_pt_idx, const int &closest_pt_idx, const pp_ds::Plan_ &global_plan_, const double &la_dis_, const double &e_, ros::Publisher &crosstrack_error_pub_, base_local_planner::LocalPlannerUtil &planner_util_, ros::NodeHandle &nh_){
         
+
         visualization_msgs::MarkerArray marker_array;
-            
+
+        std::pair<double, double> closest_pt_, la_pt_;    
+        
         int marker_id_ =0 ; 
         
         geometry_msgs::PoseStamped closest_stamped_pose_ = global_plan_.at(closest_pt_idx);
-        std::pair<double,double> closest_pose_ = {closest_stamped_pose_.pose.position.x, closest_stamped_pose_.pose.position.y};
-
+        geometry_msgs::PoseStamped la_stamped_pose_ = global_plan_.at(closest_pt_idx);
         
+        helper_functions::convert_pose_stamped_to_pair_double(closest_stamped_pose_, closest_pt_);
+        helper_functions::convert_pose_stamped_to_pair_double(la_stamped_pose_, la_pt_);
 
-        for(double len_ = 0; len_ <= la_dis_ ; len_ += 0.1){
+        double la_line_slope_ = geometry_functions::get_slope_angle_from_two_points(closest_pt_, la_pt_);
+
+        double m_;
+
+        if(la_line_slope_ == 0) {m_ = acos(0); }
+        
+        else { la_line_slope_ == -1.0/(la_line_slope_); }
+
+
+        for(double len_ = 0; len_ <= e_ ; len_ += 0.1){
                 
                 visualization_msgs::Marker marker;
 
-                double y_ = closest_pose_.first +  la_dis_ * cos(alpha_); 
-                double x_ = closest_pose_.second  + len_ * sin(alpha_);
+                double x_ = la_pt_.first -  len_ * cos(m_); 
+                double y_ = la_pt_.second  - len_ * sin(m_);
 
                 std::pair<double, double> pt_ = {x_, y_};
-
-                
 
                 marker.header.frame_id = planner_util_.getGlobalFrame();
                 marker.header.stamp = ros::Time();

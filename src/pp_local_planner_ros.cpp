@@ -135,29 +135,19 @@ namespace pp_local_planner
         std::pair<double, double> pt1_, pt2_; 
 
         pt1_ = {0, 0}, pt2_ = {1, 0}; 
-
-        std::tuple<double, double, double> line_tuple_ = geometry_functions::get_line_cofficients_from_points(pt1_, pt2_);
-
-        ROS_WARN("a_: %f b_: %f c_: %f\n", std::get<0>(line_tuple_), std::get<1>(line_tuple_), std::get<2>(line_tuple_)); 
-
+        ROS_WARN("m_: %f\n", geometry_functions::get_slope_angle_from_two_points(pt1_, pt2_));
+        
         pt1_ = {0, 0} , pt2_ = {1, 1}; 
-
-        line_tuple_ = geometry_functions::get_line_cofficients_from_points(pt1_, pt2_);
-
-        ROS_WARN("a_: %f b_: %f c_: %f\n", std::get<0>(line_tuple_), std::get<1>(line_tuple_), std::get<2>(line_tuple_)); 
-
+        ROS_WARN("m_: %f\n", geometry_functions::get_slope_angle_from_two_points(pt1_, pt2_));
+        
+        
         pt1_ = {0, 0} , pt2_ = {0, 1}; 
+        ROS_WARN("m_: %f\n", geometry_functions::get_slope_angle_from_two_points(pt1_, pt2_));
         
-        line_tuple_ = geometry_functions::get_line_cofficients_from_points(pt1_, pt2_);
-
-        ROS_WARN("a_: %f b_: %f c_: %f\n", std::get<0>(line_tuple_), std::get<1>(line_tuple_), std::get<2>(line_tuple_)); 
-
+        
         pt1_ = {0, 0} , pt2_ = {1, -1}; 
+        ROS_WARN("m_: %f\n", geometry_functions::get_slope_angle_from_two_points(pt1_, pt2_));
         
-        line_tuple_ = geometry_functions::get_line_cofficients_from_points(pt1_, pt2_);
-
-        ROS_WARN("a_: %f b_: %f c_: %f\n", std::get<0>(line_tuple_), std::get<1>(line_tuple_), std::get<2>(line_tuple_)); 
-
 
         return true;
     
