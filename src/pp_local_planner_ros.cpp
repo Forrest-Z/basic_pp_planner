@@ -119,18 +119,29 @@ namespace pp_local_planner
 
         }
 
-        ROS_WARN("closest_pt_idx: %d la_pt_idx: %d\n", closest_pt_idx_, la_pt_idx);
+        geometry_msgs::PoseStamped closest_stamped_pose_ = global_plan_.at(closest_pt_idx_); 
+        geometry_msgs::PoseStamped la_stamped_pose_ = global_plan_.at(la_pt_idx);
+
+        std::pair<double, double> closest_pose_, la_pose_; 
+
+        helper_functions::convert_pose_stamped_to_pair_double(closest_stamped_pose_, closest_pose_); 
+        helper_functions::convert_pose_stamped_to_pair_double(la_stamped_pose_, la_pose_);
+
+        double la_dis_ = geometry_functions::get_euclidean_dis(closest_pose_ , la_pose_);
 
         lookahead_pose_pub_.publish(global_plan_.at(la_pt_idx));
         closest_pt_pub_.publish(global_plan_.at(closest_pt_idx_));
-
 
         double e_, alpha_;  
         pp_tracker_functions::get_cross_track_error_(closest_pt_idx_, la_pt_idx, global_plan_, e_, alpha_);
         
         //vis_functions::publish_ct_error_line(closest_pt_idx_, global_plan_, pp_limits_.la_dis_, alpha_, ct_error_pub_, planner_util_, nh_);
         
+        ROS_WARN("e_: %f\n", e_);
+
         vis_functions::publish_la_point_line(closest_pt_idx_, la_pt_idx, global_plan_, la_pt_line_pub, planner_util_, nh_);
+        vis_functions::publish_ct_error_line(la_pt_idx, closest_pt_idx_, global_plan_, la_dis_, e_, ct_error_pub_, planner_util_, nh_);
+        
 
         std::pair<double, double> pt1_, pt2_; 
 
@@ -148,6 +159,8 @@ namespace pp_local_planner
         pt1_ = {0, 0} , pt2_ = {1, -1}; 
         ROS_WARN("m_: %f\n", geometry_functions::get_slope_angle_from_two_points(pt1_, pt2_));
         
+
+        //ros::Duration(20.0).slep();
 
         return true;
     

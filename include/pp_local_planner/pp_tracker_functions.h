@@ -213,7 +213,9 @@ namespace pp_tracker_functions {
 
         alpha_ = la_theta_ - heading_;
 
-        e_ = la_dis_ * sin(alpha_);         
+        e_ = la_dis_ * sin(alpha_);       
+
+        e_ = abs(e_);  
 
         //return e_;
 

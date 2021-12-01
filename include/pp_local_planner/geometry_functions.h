@@ -17,7 +17,7 @@ namespace geometry_functions{
     double get_slope_angle_from_two_points(const std::pair<double, double> &pt_a, const std::pair<double, double> &pt_b){
 
         double x1_ = pt_a.first, x2_ = pt_b.first; 
-        double y1_ = pt_b.second, y2_ = pt_b.second;
+        double y1_ = pt_a.second, y2_ = pt_b.second;
 
         if(y1_ == y2_ ) {return acos(0);}
 

@@ -226,21 +226,20 @@ namespace vis_functions{
         helper_functions::convert_pose_stamped_to_pair_double(closest_stamped_pose_, closest_pt_);
         helper_functions::convert_pose_stamped_to_pair_double(la_stamped_pose_, la_pt_);
 
-        double la_line_slope_ = geometry_functions::get_slope_angle_from_two_points(closest_pt_, la_pt_);
+        double la_line_slope_angle = geometry_functions::get_slope_angle_from_two_points(closest_pt_, la_pt_);
 
-        double m_;
+        double m_angle_ = la_line_slope_angle + acos(0);
 
-        if(la_line_slope_ == 0) {m_ = acos(0); }
+        int num_pts = 50;
+
+        double sep_ = e_/num_pts;
         
-        else { la_line_slope_ == -1.0/(la_line_slope_); }
-
-
-        for(double len_ = 0; len_ <= e_ ; len_ += 0.1){
+        for(double len_ = 0; len_ <= e_ ; len_ += sep_){
                 
                 visualization_msgs::Marker marker;
 
-                double x_ = la_pt_.first -  len_ * cos(m_); 
-                double y_ = la_pt_.second  - len_ * sin(m_);
+                double x_ = la_pt_.first -  len_ * cos(m_angle_); 
+                double y_ = la_pt_.second  - len_ * sin(m_angle_);
 
                 std::pair<double, double> pt_ = {x_, y_};
 
@@ -254,7 +253,7 @@ namespace vis_functions{
 
                 marker.pose.position.x = x_;
                 marker.pose.position.y = y_;
-                marker.pose.position.z = 1;
+                marker.pose.position.z = 0;
 
                 marker.pose.orientation.x = 0.0;
                 marker.pose.orientation.y = 0.0;
@@ -263,13 +262,13 @@ namespace vis_functions{
 
                 marker.scale.x = 0.02;
                 marker.scale.y = 0.02;
-                marker.scale.z = 1.0;
+                marker.scale.z = 0.02;
 
                 marker.color.a = 1.0; // Don't forget to set the alpha!
 
-                marker.color.r = 1.0;
-                marker.color.g = 0.0;
-                marker.color.b = 0.0;
+                marker.color.r = 0.0;
+                marker.color.g = 1.0;
+                marker.color.b = 1.0;
 
                 marker_array.markers.push_back(marker);
 
