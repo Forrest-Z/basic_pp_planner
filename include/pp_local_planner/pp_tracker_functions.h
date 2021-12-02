@@ -147,6 +147,26 @@ namespace pp_tracker_functions {
     }
 
 
+    bool get_ct_error_signum(const geometry_msgs::PoseStamped &global_pose_, const int &la_pt_idx, const pp_ds::Plan_ &global_plan_){
+
+
+        std::tuple<double, double> rv_, sv_, lav_; 
+        
+        rv_ = {global_pose_.pose.position.x, global_pose_.pose.position.y};
+        lav_ = {global_plan_[la_pt_idx].pose.position.x, global_plan_[la_pt_idx].pose.position.y};
+
+        double theta_ = tf::getYaw(global_pose_.pose.orientation);
+
+        double dx_ = cos(theta_), dy_ = sin(theta_);
+
+        sv_ = {std::get<0>(rv_) + dx_ , std::get<1>(rv_) + dy_};
+
+        double cp_ =  (std::get<1>(sv_)  - std::get<1>(rv_)) * (std::get<0>(lav_) - std::get<0>(rv_)) -  (std::get<0>(sv_) - std::get<0>(rv_)) * (std::get<1>(lav_) - std::get<1>(rv_));
+
+        return (cp_ > 0);
+    }
+
+
     bool get_closest_pt_idx_in_global_plan_(int &mn_index, const geometry_msgs::PoseStamped &global_pose_stamped_, const pp_ds::Plan_ &global_plan_)
     {
 
@@ -215,7 +235,7 @@ namespace pp_tracker_functions {
 
         e_ = la_dis_ * sin(alpha_);       
 
-        e_ = abs(e_);  
+       // e_ = abs(e_);  
 
         //return e_;
 

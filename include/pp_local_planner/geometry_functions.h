@@ -8,6 +8,21 @@
 
 namespace geometry_functions{
 
+    /*std::tuple<double, double, double> crossProduct(const std::tuple<double, double, double> &va_ , const std::tuple<double, double, double> &vb_){
+        
+        std::tuple<double, double,double> cp_;
+        double a_ = std::get<1>(va_) * std::get<2>(vb_) -std::get<2>(va_) * std::get<1>(vb_);
+        
+        double b_ = std::get<2>(va_) * std::get<0>(vb_) - std::get<0>(va_) * std::get<2>(vb_);
+
+        double c_ = std::get<0>(va_) * std::get<1>(vb_)  - std::get<1>(va_) * std::get<0>(vb_);
+
+        cp_ = {a_, b_, c_};
+
+        return cp_;
+        
+    }*/
+
     double get_euclidean_dis(const std::pair<double, double> &a_, const std::pair<double, double> &b_)
     {
 
@@ -40,7 +55,7 @@ namespace geometry_functions{
     
         if(den_ == 0) {
 
-            ROS_WARN("Failed:: Points are either not collinear or not distinct.");
+            //ROS_WARN("Failed:: Points are either not collinear or not distinct.");
             return false;
 
         }

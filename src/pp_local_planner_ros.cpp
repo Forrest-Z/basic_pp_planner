@@ -69,9 +69,6 @@ namespace pp_local_planner
 
     }
 
-
-    
-    
     
     bool PPLocalPlannerROS::computeVelocityCommands(geometry_msgs::Twist &cmd_vel)
     {
@@ -119,9 +116,16 @@ namespace pp_local_planner
 
         }
 
+        ROS_WARN("Path processing started!\n");
+
+        std::vector<pp_ds::PathPoint> path_points_;
+        pp_tracker_functions::process_global_path_points(global_plan_, path_points_, pp_limits_);
+        
+        double v_ = path_points_[closest_pt_idx_].vx_;
+
         geometry_msgs::PoseStamped closest_stamped_pose_ = global_plan_.at(closest_pt_idx_); 
         geometry_msgs::PoseStamped la_stamped_pose_ = global_plan_.at(la_pt_idx);
-
+        
         std::pair<double, double> closest_pose_, la_pose_; 
 
         helper_functions::convert_pose_stamped_to_pair_double(closest_stamped_pose_, closest_pose_); 
@@ -135,32 +139,30 @@ namespace pp_local_planner
         double e_, alpha_;  
         pp_tracker_functions::get_cross_track_error_(closest_pt_idx_, la_pt_idx, global_plan_, e_, alpha_);
         
-        //vis_functions::publish_ct_error_line(closest_pt_idx_, global_plan_, pp_limits_.la_dis_, alpha_, ct_error_pub_, planner_util_, nh_);
-        
         ROS_WARN("e_: %f\n", e_);
 
+        v_ = 0.2;
+
+        //if(v_ == 1.0) {v_ = 0.1; }
+
+        double r_ = (la_dis_ * la_dis_)/ (2 * e_);
+
+        double sig_ = pp_tracker_functions::get_ct_error_signum(global_pose_stamped_, la_pt_idx, global_plan_);
+
+        double mult_ = (sig_ > 0 ? -1 : 1);
+
+        double w_ = mult_ * abs(v_/r_);
+
         vis_functions::publish_la_point_line(closest_pt_idx_, la_pt_idx, global_plan_, la_pt_line_pub, planner_util_, nh_);
-        vis_functions::publish_ct_error_line(la_pt_idx, closest_pt_idx_, global_plan_, la_dis_, e_, ct_error_pub_, planner_util_, nh_);
-        
+        vis_functions::publish_ct_error_line(la_pt_idx, global_pose_stamped_, global_plan_, alpha_, e_, ct_error_pub_, planner_util_, nh_);
 
-        std::pair<double, double> pt1_, pt2_; 
 
-        pt1_ = {0, 0}, pt2_ = {1, 0}; 
-        ROS_WARN("m_: %f\n", geometry_functions::get_slope_angle_from_two_points(pt1_, pt2_));
-        
-        pt1_ = {0, 0} , pt2_ = {1, 1}; 
-        ROS_WARN("m_: %f\n", geometry_functions::get_slope_angle_from_two_points(pt1_, pt2_));
-        
-        
-        pt1_ = {0, 0} , pt2_ = {0, 1}; 
-        ROS_WARN("m_: %f\n", geometry_functions::get_slope_angle_from_two_points(pt1_, pt2_));
-        
-        
-        pt1_ = {0, 0} , pt2_ = {1, -1}; 
-        ROS_WARN("m_: %f\n", geometry_functions::get_slope_angle_from_two_points(pt1_, pt2_));
-        
 
-        //ros::Duration(20.0).slep();
+        ROS_WARN("v_: %f w_: %f r_: %f\n", v_, w_, r_);
+        cmd_vel.linear.x = v_; 
+        cmd_vel.angular.z = w_;
+        
+        ros::Duration(2.0).sleep();
 
         return true;
     

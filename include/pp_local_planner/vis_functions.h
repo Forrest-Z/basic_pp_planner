@@ -211,34 +211,33 @@ namespace vis_functions{
     }
 
 
-    void publish_ct_error_line(const int &la_pt_idx, const int &closest_pt_idx, const pp_ds::Plan_ &global_plan_, const double &la_dis_, const double &e_, ros::Publisher &crosstrack_error_pub_, base_local_planner::LocalPlannerUtil &planner_util_, ros::NodeHandle &nh_){
+    void publish_ct_error_line(const int &la_pt_idx, const geometry_msgs::PoseStamped &global_stamped_pose_, const pp_ds::Plan_ &global_plan_, const double &alpha_, const double &e_, ros::Publisher &ct_error_pub_, base_local_planner::LocalPlannerUtil &planner_util_, ros::NodeHandle &nh_){
         
 
         visualization_msgs::MarkerArray marker_array;
 
-        std::pair<double, double> closest_pt_, la_pt_;    
+        geometry_msgs::PoseStamped la_stamped_pt = global_plan_[la_pt_idx];
+        std::pair<double, double>la_pt_;    
         
+        helper_functions::convert_pose_stamped_to_pair_double(la_stamped_pt, la_pt_);
+
         int marker_id_ =0 ; 
         
-        geometry_msgs::PoseStamped closest_stamped_pose_ = global_plan_.at(closest_pt_idx);
-        geometry_msgs::PoseStamped la_stamped_pose_ = global_plan_.at(closest_pt_idx);
+        double pose_yaw_ = tf::getYaw(global_stamped_pose_.pose.orientation);
+
+        double m_angle_ = pose_yaw_ + 1.57;
         
-        helper_functions::convert_pose_stamped_to_pair_double(closest_stamped_pose_, closest_pt_);
-        helper_functions::convert_pose_stamped_to_pair_double(la_stamped_pose_, la_pt_);
-
-        double la_line_slope_angle = geometry_functions::get_slope_angle_from_two_points(closest_pt_, la_pt_);
-
-        double m_angle_ = la_line_slope_angle + acos(0);
-
         int num_pts = 50;
 
         double sep_ = e_/num_pts;
         
+        double mul_ = (alpha_ > pose_yaw_ ? 1: -1);
+
         for(double len_ = 0; len_ <= e_ ; len_ += sep_){
                 
                 visualization_msgs::Marker marker;
 
-                double x_ = la_pt_.first -  len_ * cos(m_angle_); 
+                double x_ = la_pt_.first -  mul_ * len_ * cos(m_angle_); 
                 double y_ = la_pt_.second  - len_ * sin(m_angle_);
 
                 std::pair<double, double> pt_ = {x_, y_};
@@ -274,7 +273,7 @@ namespace vis_functions{
 
         }
 
-        crosstrack_error_pub_.publish(marker_array);
+        ct_error_pub_.publish(marker_array);
 
     }
 
